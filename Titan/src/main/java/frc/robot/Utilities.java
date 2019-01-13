@@ -8,8 +8,8 @@ class Utilities {
     public static double[] normalize(double[] values) {
         double max_val = 1.0;
         for(double val : values) {
-            if(val > max_val)
-                max_val = val;
+            if(Math.abs(val) > max_val)
+                max_val = Math.abs(val);
         }
 
         for(int x = 0; x < values.length; x++) 

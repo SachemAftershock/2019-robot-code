@@ -6,11 +6,13 @@ import edu.wpi.first.wpilibj.XboxController;
 public class Robot extends TimedRobot {
 
   XboxController primaryDriver, secondaryDriver;
+  SWDrive drive;
 
   @Override
   public void robotInit() {
     primaryDriver = new XboxController(Constants.PRIMARY_DRIVER_PORT);
     secondaryDriver = new XboxController(Constants.SECONDARY_DRIVER_PORT);
+    drive = SWDrive.getInstance();
   }
 
   @Override
@@ -27,7 +29,12 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    SWDrive.getInstance().drive(primaryDriver);
+    drive.drive(primaryDriver);
+
+    if(primaryDriver.getAButton())
+      drive.setHighGear();
+    if(primaryDriver.getBButton())
+      drive.setLowGear();
   }
 
   @Override

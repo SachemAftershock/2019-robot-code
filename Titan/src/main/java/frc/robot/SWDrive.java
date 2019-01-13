@@ -3,12 +3,16 @@ package frc.robot;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 class SWDrive {
     private TalonSRX frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor;
-    
+    private DoubleSolenoid gearSolenoid;
+    private boolean isHighGear;
+
     private static SWDrive driveInstance = new SWDrive();
     private boolean tankEnabled;
 
@@ -67,4 +71,18 @@ class SWDrive {
         frontRightMotor.set(ControlMode.PercentOutput, rightSpeed);
         backRightMotor.set(ControlMode.PercentOutput, rightSpeed);
     } 
+
+    public void setHighGear() {
+        if(!isHighGear) {
+            gearSolenoid.set(Value.kForward);
+            isHighGear = true;
+        }
+    }
+    
+    public void setLowGear() {
+        if(isHighGear) {
+            gearSolenoid.set(Value.kReverse);
+            isHighGear = false;
+        }   
+    }
 }
