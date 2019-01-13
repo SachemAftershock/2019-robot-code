@@ -30,11 +30,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     drive.drive(primaryDriver);
-
-    if(primaryDriver.getAButton())
-      drive.setHighGear();
-    if(primaryDriver.getBButton())
-      drive.setLowGear();
   }
 
   @Override
