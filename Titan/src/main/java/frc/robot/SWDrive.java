@@ -21,6 +21,8 @@ class SWDrive {
         frontRightMotor = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
         backLeftMotor = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
         backRightMotor = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
+
+        gearSolenoid = new DoubleSolenoid(0, 1);
     }
 
     public static SWDrive getInstance() {
