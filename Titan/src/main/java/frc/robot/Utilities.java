@@ -2,7 +2,7 @@ package frc.robot;
 
 class Utilities {
     public static double deadband(double value, double tolerance) {
-        return Math.abs(value) < tolerance ? value : tolerance;
+        return Math.abs(value) > tolerance ? value : 0.0;
     }
 
     public static double[] normalize(double[] values) {
