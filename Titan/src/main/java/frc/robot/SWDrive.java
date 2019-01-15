@@ -4,12 +4,14 @@ import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 class SWDrive {
-    private TalonSRX frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor;
+    private TalonSRX /*frontLeftMotor,*/ frontRightMotor, /*backLeftMotor,*/ backRightMotor;
+    private VictorSP frontLeftMotor, backLeftMotor;
     private DoubleSolenoid gearSolenoid;
     private boolean isHighGear;
 
@@ -17,9 +19,9 @@ class SWDrive {
     private boolean tankEnabled;
 
     private SWDrive() {
-        frontLeftMotor = new TalonSRX(Constants.FRONT_LEFT_MOTOR_PORT);
+        frontLeftMotor = new VictorSP(Constants.FRONT_LEFT_MOTOR_PORT);
         frontRightMotor = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
-        backLeftMotor = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
+        backLeftMotor = new VictorSP(Constants.BACK_LEFT_MOTOR_PORT);
         backRightMotor = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
 
         gearSolenoid = new DoubleSolenoid(0, 1);
@@ -56,8 +58,8 @@ class SWDrive {
     }
 
     private void arcadeDrive(XboxController controller) {
-        double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
-        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
+        double leftY = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
+        double rightX = -Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
 
         double leftSpeed = leftY  + rightX;
         double rightSpeed = leftY - rightX;
@@ -68,8 +70,8 @@ class SWDrive {
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
-        frontLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
-        backLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
+        frontLeftMotor.set(/*ControlMode.PercentOutput,*/ leftSpeed);
+        backLeftMotor.set(/*ControlMode.PercentOutput,*/ leftSpeed);
         frontRightMotor.set(ControlMode.PercentOutput, rightSpeed);
         backRightMotor.set(ControlMode.PercentOutput, rightSpeed);
     } 
