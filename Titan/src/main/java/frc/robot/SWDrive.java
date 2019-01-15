@@ -4,23 +4,21 @@ import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 class SWDrive {
-    private TalonSRX /*frontLeftMotor,*/ frontRightMotor, /*backLeftMotor,*/ backRightMotor;
-    private VictorSP frontLeftMotor, backLeftMotor;
+    private TalonSRX frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor;
     private DoubleSolenoid gearSolenoid;
     private boolean tankEnabled;
 
     private static SWDrive driveInstance = new SWDrive();
 
     private SWDrive() {
-        frontLeftMotor = new VictorSP(Constants.FRONT_LEFT_MOTOR_PORT);
+        frontLeftMotor = new TalonSRX(Constants.FRONT_LEFT_MOTOR_PORT);
         frontRightMotor = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
-        backLeftMotor = new VictorSP(Constants.BACK_LEFT_MOTOR_PORT);
+        backLeftMotor = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
         backRightMotor = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
 
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
@@ -79,8 +77,8 @@ class SWDrive {
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
-        frontLeftMotor.set(/*ControlMode.PercentOutput,*/ leftSpeed);
-        backLeftMotor.set(/*ControlMode.PercentOutput,*/ leftSpeed);
+        frontLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
+        backLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
         frontRightMotor.set(ControlMode.PercentOutput, rightSpeed);
         backRightMotor.set(ControlMode.PercentOutput, rightSpeed);
     } 
