@@ -13,10 +13,9 @@ class SWDrive {
     private TalonSRX /*frontLeftMotor,*/ frontRightMotor, /*backLeftMotor,*/ backRightMotor;
     private VictorSP frontLeftMotor, backLeftMotor;
     private DoubleSolenoid gearSolenoid;
-    private boolean isHighGear;
+    private boolean tankEnabled;
 
     private static SWDrive driveInstance = new SWDrive();
-    private boolean tankEnabled;
 
     private SWDrive() {
         frontLeftMotor = new VictorSP(Constants.FRONT_LEFT_MOTOR_PORT);
@@ -24,7 +23,9 @@ class SWDrive {
         backLeftMotor = new VictorSP(Constants.BACK_LEFT_MOTOR_PORT);
         backRightMotor = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
 
-        gearSolenoid = new DoubleSolenoid(0, 1);
+        gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
+
+        tankEnabled = false;
     }
 
     public static SWDrive getInstance() {
@@ -40,6 +41,14 @@ class SWDrive {
             tankDrive(controller);
         } else {
             arcadeDrive(controller);
+        }
+
+        //TODO: Need to test how get_ButtonReleased works,
+        //      not sure if it runs how I think it does.
+        if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
+            gearSolenoid.set(Value.kForward);
+        } else if(controller.getAButtonReleased() && gearSolenoid.get() != Value.kReverse) {
+            gearSolenoid.set(Value.kReverse);
         }
     }
 
@@ -76,17 +85,4 @@ class SWDrive {
         backRightMotor.set(ControlMode.PercentOutput, rightSpeed);
     } 
 
-    public void setHighGear() {
-        if(!isHighGear) {
-            gearSolenoid.set(Value.kForward);
-            isHighGear = true;
-        }
-    }
-    
-    public void setLowGear() {
-        if(isHighGear) {
-            gearSolenoid.set(Value.kReverse);
-            isHighGear = false;
-        }   
-    }
 }
