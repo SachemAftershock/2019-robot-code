@@ -1,29 +1,53 @@
 package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.FeedbackDevice;
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.SerialPort.Port;
 
 class SWDrive {
-    private TalonSRX frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor;
+    private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private boolean tankEnabled;
+    private AHRS navx;
 
     private static SWDrive driveInstance = new SWDrive();
+    private PIDController controller;
+    private boolean setpointReached;
 
     private SWDrive() {
-        frontLeftMotor = new TalonSRX(Constants.FRONT_LEFT_MOTOR_PORT);
-        frontRightMotor = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
-        backLeftMotor = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
-        backRightMotor = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
+        leftMaster = new TalonSRX(Constants.FRONT_LEFT_MOTOR_PORT);
+        leftMaster.setNeutralMode(NeutralMode.Brake);
+        leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
+        leftMaster.setSelectedSensorPosition(0, 0, 0);
+
+        rightMaster = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
+        rightMaster.setNeutralMode(NeutralMode.Brake);
+        rightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
+        rightMaster.setSelectedSensorPosition(0, 0, 0);
+
+        leftSlave = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
+        leftSlave.setNeutralMode(NeutralMode.Brake);
+        leftSlave.follow(leftMaster);
+
+        rightSlave = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
+        rightSlave.setNeutralMode(NeutralMode.Brake);
+        rightSlave.follow(rightMaster);
 
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
 
+        navx = new AHRS(Port.kMXP);
+        controller = new PIDController();
         tankEnabled = false;
+        setpointReached = true;
     }
 
     public static SWDrive getInstance() {
@@ -41,8 +65,6 @@ class SWDrive {
             arcadeDrive(controller);
         }
 
-        //TODO: Need to test how get_ButtonReleased works,
-        //      not sure if it runs how I think it does.
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
             gearSolenoid.set(Value.kForward);
         } else if(controller.getAButtonReleased() && gearSolenoid.get() != Value.kReverse) {
@@ -72,15 +94,93 @@ class SWDrive {
         double rightSpeed = leftY - rightX;
         double[] speeds = {leftSpeed, rightSpeed};
         speeds = Utilities.normalize(speeds);
-
+ 
         driveMotors(speeds[0], speeds[1]);
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
-        frontLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
-        backLeftMotor.set(ControlMode.PercentOutput, leftSpeed);
-        frontRightMotor.set(ControlMode.PercentOutput, rightSpeed);
-        backRightMotor.set(ControlMode.PercentOutput, rightSpeed);
+        leftMaster.set(ControlMode.PercentOutput, leftSpeed);
+        rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
+
+    public void autoDrive(double naturalUnits) {
+        if(setpointReached)
+            setpointReached = false;
+
+        leftMaster.set(ControlMode.Position, naturalUnits);
+        rightMaster.set(ControlMode.Position, naturalUnits);
+    }
+
+    public void autoRotate(double theta) {
+        if(setpointReached) {
+            setpointReached = false;
+            controller.start(Constants.ROTATE_GAINS, theta, navx.getYaw());
+        }
+
+        double output = controller.update(navx.getYaw());
+        driveMotors(output, -output);
+        setpointReached = Math.abs(controller.getError()) > Constants.ROTATE_EPSILON;
+    }
+
+    public boolean setpointReached() {
+        return setpointReached;
+    }
+
+    public void zero() {
+        navx.zeroYaw();
+        leftMaster.setSelectedSensorPosition(0, 0, 0);
+        rightMaster.setSelectedSensorPosition(0, 0, 0);
+    }
+
+    class PIDController {
+
+        private double kP, kI, kD, setpoint, integral, derivative, error, prevError;
+        private Timer timer;
+        public PIDController() {
+            kP = 0.0;
+            kI = 0.0;
+            kD = 0.0;
+            setpoint = 0.0;
+            integral = 0.0;
+            derivative = 0.0;
+            error = 0.0;
+            prevError = 0.0;
+
+            timer = new Timer();
+        }
+
+        public double getError() {
+            return error;
+        }
+
+        public double getRuntime() {
+            return timer.get();
+        }
+
+        public double update(double current) {
+            error = setpoint - current;
+            integral += error;
+            derivative = error - prevError;
+
+            double output = kP * error + kI * integral + kD * derivative;
+
+            prevError = error;
+
+            return Math.abs(output) > 1.0 ? output / output : output;
+        }
+
+        public void start(double[] gains, double setpoint, double current) {
+            kP = gains[0];
+            kI = gains[1];
+            kD = gains[2];
+            this.setpoint = setpoint;
+            integral = 0.0;
+            derivative = 0.0;
+            error = 0.0;
+            prevError = 0.0;
+            timer.start();
+            
+        }
+    }
 
 }
