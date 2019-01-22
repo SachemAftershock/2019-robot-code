@@ -24,21 +24,21 @@ class SWDrive {
     private boolean setpointReached;
 
     private SWDrive() {
-        leftMaster = new TalonSRX(Constants.FRONT_LEFT_MOTOR_PORT);
+        leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         leftMaster.setSelectedSensorPosition(0, 0, 0);
 
-        rightMaster = new TalonSRX(Constants.FRONT_RIGHT_MOTOR_PORT);
+        rightMaster = new TalonSRX(Constants.RIGHT_MASTER_PORT);
         rightMaster.setNeutralMode(NeutralMode.Brake);
         rightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
 
-        leftSlave = new TalonSRX(Constants.BACK_LEFT_MOTOR_PORT);
+        leftSlave = new TalonSRX(Constants.LEFT_SLAVE_PORT);
         leftSlave.setNeutralMode(NeutralMode.Brake);
         leftSlave.follow(leftMaster);
 
-        rightSlave = new TalonSRX(Constants.BACK_RIGHT_MOTOR_PORT);
+        rightSlave = new TalonSRX(Constants.RIGHT_SLAVE_PORT);
         rightSlave.setNeutralMode(NeutralMode.Brake);
         rightSlave.follow(rightMaster);
 
@@ -55,6 +55,8 @@ class SWDrive {
     }
 
     public void drive(XboxController controller) {
+        System.out.println(navx.getYaw());
+
         if(controller.getBackButtonReleased()) {
             tankEnabled = !tankEnabled;
         }
@@ -118,11 +120,12 @@ class SWDrive {
         }
 
         double output = controller.update(navx.getYaw());
-        driveMotors(output, -output);
-        setpointReached = Math.abs(controller.getError()) > Constants.ROTATE_EPSILON;
+        driveMotors(output, output); //Normally driveMotors(output, -output); but right side is inverted
+        setpointReached = Math.abs(controller.getError()) < Constants.ROTATE_EPSILON;
     }
 
     public boolean setpointReached() {
+        System.out.println("Setpoint Reached: " + setpointReached);
         return setpointReached;
     }
 
@@ -130,6 +133,10 @@ class SWDrive {
         navx.zeroYaw();
         leftMaster.setSelectedSensorPosition(0, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
+    }
+
+    public void zeroYaw() {
+        navx.zeroYaw();
     }
 
     class PIDController {
@@ -165,7 +172,7 @@ class SWDrive {
             double output = kP * error + kI * integral + kD * derivative;
 
             prevError = error;
-
+            System.out.println("PIDController::Update error: " + error + ", prevError: " + prevError + ", integral: " + integral + ", derivative: " + derivative + ", setpoint: " + setpoint + ", output: " + output );
             return Math.abs(output) > 1.0 ? output / output : output;
         }
 

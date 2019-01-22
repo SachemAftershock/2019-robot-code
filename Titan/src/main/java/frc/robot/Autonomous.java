@@ -16,6 +16,10 @@ class Autonomous {
     }
 
     public void drive() {
+        if(taskList.size() == 0 && setpointReached()) {
+            return;
+        }
+
         if(target == null || setpointReached()) {
             target = taskList.poll();
         }
@@ -37,6 +41,7 @@ class Autonomous {
     }
 
     public void queueAutoRotate(Rotation rot, double theta) {
+        System.out.println(rot.getDirection() + " " + theta + " " + AutoObjective.ROTATE);
         taskList.add(new AutoTask(AutoObjective.ROTATE, theta * rot.getDirection()));
     }
 

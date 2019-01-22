@@ -18,6 +18,7 @@ public class Robot extends TimedRobot {
     primaryDriver = new XboxController(Constants.PRIMARY_DRIVER_PORT);
     secondaryDriver = new XboxController(Constants.SECONDARY_DRIVER_PORT);
     drive = SWDrive.getInstance();
+    auto = Autonomous.getInstance();
     compressor = new Compressor();
     compressor.start();
     compressor.setClosedLoopControl(true);
@@ -28,11 +29,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    auto.queueAutoRotate(Rotation.CLOCKWISE, 45);
+    drive.zeroYaw();
+    auto.queueAutoRotate(Rotation.CLOCKWISE, 90);
   }
 
   @Override
   public void autonomousPeriodic() {
+    System.out.println("Autonomous Periodic: " + autoEnabled);
       if(autoEnabled) {
         auto.drive();
       } else {
