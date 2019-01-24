@@ -28,11 +28,25 @@ class SWDrive {
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         leftMaster.setSelectedSensorPosition(0, 0, 0);
+        leftMaster.configMotionAcceleration(1000, 0);
+		leftMaster.configMotionCruiseVelocity(5000, 0);
+		leftMaster.config_IntegralZone(0, 200, 0);
+		leftMaster.configClosedloopRamp(0, 256);
+		leftMaster.configOpenloopRamp(0, 256);
+		leftMaster.configAllowableClosedloopError(0, 200, 0);
 
         rightMaster = new TalonSRX(Constants.RIGHT_MASTER_PORT);
         rightMaster.setNeutralMode(NeutralMode.Brake);
         rightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
+        rightMaster.setInverted(true);
+        rightMaster.configMotionAcceleration(1000, 0);
+		rightMaster.configMotionCruiseVelocity(5000, 0);
+		rightMaster.config_IntegralZone(0, 200, 0);
+		rightMaster.configClosedloopRamp(0, 256);
+		rightMaster.configOpenloopRamp(0, 256);
+		rightMaster.configAllowableClosedloopError(0, 200, 0);
+        //rightMaster.setSensorPhase(true);
 
         leftSlave = new TalonSRX(Constants.LEFT_SLAVE_PORT);
         leftSlave.setNeutralMode(NeutralMode.Brake);
@@ -40,6 +54,7 @@ class SWDrive {
 
         rightSlave = new TalonSRX(Constants.RIGHT_SLAVE_PORT);
         rightSlave.setNeutralMode(NeutralMode.Brake);
+        rightSlave.setInverted(true);
         rightSlave.follow(rightMaster);
 
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
@@ -55,8 +70,6 @@ class SWDrive {
     }
 
     public void drive(XboxController controller) {
-        System.out.println(navx.getYaw());
-
         if(controller.getBackButtonReleased()) {
             tankEnabled = !tankEnabled;
         }
@@ -85,22 +98,23 @@ class SWDrive {
         double[] speeds = {leftSpeed, rightSpeed};
         speeds = Utilities.normalize(speeds);
 
-        driveMotors(speeds[0], speeds[1]);
+        driveMotors(-speeds[0],  -speeds[1]);
     }
 
     private void arcadeDrive(XboxController controller) {
-        double leftY = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
-        double rightX = -Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
+        double leftY = -Utilities.deadband(controller.getX(Hand.kRight), 0.2);
+        double rightX = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
 
-        double leftSpeed = leftY  + rightX;
+        double leftSpeed = leftY + rightX;
         double rightSpeed = leftY - rightX;
         double[] speeds = {leftSpeed, rightSpeed};
         speeds = Utilities.normalize(speeds);
  
-        driveMotors(speeds[0], speeds[1]);
+        driveMotors(-speeds[0], speeds[1]);
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
+        System.out.println(navx.getYaw() + " " + leftMaster.getSelectedSensorPosition() + " " + rightMaster.getSelectedSensorPosition());
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
@@ -108,9 +122,13 @@ class SWDrive {
     public void autoDrive(double naturalUnits) {
         if(setpointReached)
             setpointReached = false;
-
-        leftMaster.set(ControlMode.Position, naturalUnits);
+        System.out.println(rightMaster.getOutputCurrent());
+        //System.out.println("SP " + setpointReached + ", Left: " + leftMaster.getSelectedSensorPosition() + "/" + naturalUnits + ", Right: " + rightMaster.getSelectedSensorPosition() + "/" + naturalUnits);
         rightMaster.set(ControlMode.Position, naturalUnits);
+        leftMaster.set(ControlMode.Position, naturalUnits);
+
+        
+        setpointReached = (Math.abs(leftMaster.getSelectedSensorPosition() - naturalUnits) < Constants.LINEAR_EPSILON && Math.abs(rightMaster.getSelectedSensorPosition() - naturalUnits) < Constants.LINEAR_EPSILON);
     }
 
     public void autoRotate(double theta) {
@@ -120,12 +138,11 @@ class SWDrive {
         }
 
         double output = controller.update(navx.getYaw());
-        driveMotors(output, output); //Normally driveMotors(output, -output); but right side is inverted
+        driveMotors(output, -output); //Normally driveMotors(output, -output); but right side is inverted
         setpointReached = Math.abs(controller.getError()) < Constants.ROTATE_EPSILON;
     }
 
     public boolean setpointReached() {
-        System.out.println("Setpoint Reached: " + setpointReached);
         return setpointReached;
     }
 
@@ -172,7 +189,7 @@ class SWDrive {
             double output = kP * error + kI * integral + kD * derivative;
 
             prevError = error;
-            System.out.println("PIDController::Update error: " + error + ", prevError: " + prevError + ", integral: " + integral + ", derivative: " + derivative + ", setpoint: " + setpoint + ", output: " + output );
+            System.out.println("PIDController::Update current: " + current + ", error: " + error + ", setpoint: " + setpoint + ", output: " + output );
             return Math.abs(output) > 1.0 ? output / output : output;
         }
 

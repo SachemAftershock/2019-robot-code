@@ -2,7 +2,9 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 public class Robot extends TimedRobot {
 
@@ -29,13 +31,14 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    drive.zeroYaw();
-    auto.queueAutoRotate(Rotation.CLOCKWISE, 90);
+    drive.zero();
+
+    auto.queueLinearDistance(Distance.FOOT, 5.0 );
+    //auto.queueAutoRotate(Rotation.CLOCKWISE, 90);
   }
 
   @Override
   public void autonomousPeriodic() {
-    System.out.println("Autonomous Periodic: " + autoEnabled);
       if(autoEnabled) {
         auto.drive();
       } else {
@@ -49,6 +52,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    drive.zero();
   }
 
   @Override

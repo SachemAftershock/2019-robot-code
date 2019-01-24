@@ -14,7 +14,8 @@ public class Constants {
 
     static final double[] LINEAR_GAINS = {0.25, 0.0, 3.0};
     static final double[] ROTATE_GAINS = {0.0105, 0.0, 0.03};
-    static final double ROTATE_EPSILON = 3.0;
+    static final double ROTATE_EPSILON = 3;
+    static final double LINEAR_EPSILON = 100;
 
     static final double WHEEL_DIAMETER_INCHES = 6;
     static final double WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_INCHES * Math.PI;

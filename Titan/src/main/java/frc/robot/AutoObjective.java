@@ -1,7 +1,7 @@
 package frc.robot;
 
 public enum AutoObjective {
-    LINEAR, ROTATE;
+    LINEAR, ROTATE;//, WAIT;
 }
 
 enum Distance
