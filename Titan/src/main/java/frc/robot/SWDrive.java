@@ -13,40 +13,44 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.SerialPort.Port;
 
-class SWDrive {
+public class SWDrive {
     private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
-    private boolean tankEnabled;
+    private boolean tankEnabled, setpointReached;
     private AHRS navx;
-
+    private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController controller;
-    private boolean setpointReached;
 
     private SWDrive() {
         leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         leftMaster.setSelectedSensorPosition(0, 0, 0);
+        leftMaster.config_kP(0, Constants.LINEAR_GAINS[0], 0);
+        leftMaster.config_kI(0, Constants.LINEAR_GAINS[1], 0);
+        leftMaster.config_kD(0, Constants.LINEAR_GAINS[2], 0);
         leftMaster.configMotionAcceleration(1000, 0);
 		leftMaster.configMotionCruiseVelocity(5000, 0);
 		leftMaster.config_IntegralZone(0, 200, 0);
 		leftMaster.configClosedloopRamp(0, 256);
 		leftMaster.configOpenloopRamp(0, 256);
-		leftMaster.configAllowableClosedloopError(0, 200, 0);
+		leftMaster.configAllowableClosedloopError(0, Constants.LINEAR_EPSILON, 0);
 
         rightMaster = new TalonSRX(Constants.RIGHT_MASTER_PORT);
         rightMaster.setNeutralMode(NeutralMode.Brake);
         rightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
         rightMaster.setInverted(true);
+        rightMaster.config_kP(0, Constants.LINEAR_GAINS[0], 0);
+        rightMaster.config_kI(0, Constants.LINEAR_GAINS[1], 0);
+        rightMaster.config_kD(0, Constants.LINEAR_GAINS[2], 0);
         rightMaster.configMotionAcceleration(1000, 0);
 		rightMaster.configMotionCruiseVelocity(5000, 0);
 		rightMaster.config_IntegralZone(0, 200, 0);
 		rightMaster.configClosedloopRamp(0, 256);
 		rightMaster.configOpenloopRamp(0, 256);
-		rightMaster.configAllowableClosedloopError(0, 200, 0);
-        //rightMaster.setSensorPhase(true);
+		rightMaster.configAllowableClosedloopError(0, Constants.LINEAR_EPSILON, 0);
 
         leftSlave = new TalonSRX(Constants.LEFT_SLAVE_PORT);
         leftSlave.setNeutralMode(NeutralMode.Brake);
@@ -63,6 +67,8 @@ class SWDrive {
         controller = new PIDController();
         tankEnabled = false;
         setpointReached = true;
+        leftTarget = 0;
+        rightTarget = 0;
     }
 
     public static SWDrive getInstance() {
@@ -114,31 +120,31 @@ class SWDrive {
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
-        System.out.println(navx.getYaw() + " " + leftMaster.getSelectedSensorPosition() + " " + rightMaster.getSelectedSensorPosition());
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
 
-    public void autoDrive(double naturalUnits) {
-        if(setpointReached)
+    public void autoDrive(double setpoint) {
+        if(setpointReached) {
+            leftTarget = leftMaster.getSelectedSensorPosition() + setpoint;
+            rightTarget = rightMaster.getSelectedSensorPosition() + setpoint;
             setpointReached = false;
-        System.out.println(rightMaster.getOutputCurrent());
-        //System.out.println("SP " + setpointReached + ", Left: " + leftMaster.getSelectedSensorPosition() + "/" + naturalUnits + ", Right: " + rightMaster.getSelectedSensorPosition() + "/" + naturalUnits);
-        rightMaster.set(ControlMode.Position, naturalUnits);
-        leftMaster.set(ControlMode.Position, naturalUnits);
+        }
 
+        leftMaster.set(ControlMode.Position, leftTarget);
+        rightMaster.set(ControlMode.Position, rightTarget);
         
-        setpointReached = (Math.abs(leftMaster.getSelectedSensorPosition() - naturalUnits) < Constants.LINEAR_EPSILON && Math.abs(rightMaster.getSelectedSensorPosition() - naturalUnits) < Constants.LINEAR_EPSILON);
+        setpointReached = (Math.abs(leftMaster.getSelectedSensorPosition() - leftTarget) < Constants.LINEAR_EPSILON && Math.abs(rightMaster.getSelectedSensorPosition() - rightTarget) < Constants.LINEAR_EPSILON);
     }
 
     public void autoRotate(double theta) {
         if(setpointReached) {
             setpointReached = false;
-            controller.start(Constants.ROTATE_GAINS, theta, navx.getYaw());
+            controller.start(Constants.ROTATE_GAINS, navx.getYaw() + theta, navx.getYaw());
         }
 
         double output = controller.update(navx.getYaw());
-        driveMotors(output, -output); //Normally driveMotors(output, -output); but right side is inverted
+        driveMotors(output, -output);
         setpointReached = Math.abs(controller.getError()) < Constants.ROTATE_EPSILON;
     }
 
@@ -150,10 +156,6 @@ class SWDrive {
         navx.zeroYaw();
         leftMaster.setSelectedSensorPosition(0, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
-    }
-
-    public void zeroYaw() {
-        navx.zeroYaw();
     }
 
     class PIDController {

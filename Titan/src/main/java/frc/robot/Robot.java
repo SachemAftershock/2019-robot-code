@@ -5,6 +5,8 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import frc.robot.Enums.*;
+import frc.robot.Auton.*;
 
 public class Robot extends TimedRobot {
 
@@ -33,8 +35,8 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     drive.zero();
 
-    auto.queueLinearDistance(Distance.FOOT, 5.0 );
-    //auto.queueAutoRotate(Rotation.CLOCKWISE, 90);
+    auto.queueObjective(new AutonRotate(Rotation.CLOCKWISE, 90.0));
+    auto.queueObjective(new AutonDrive(Distance.FEET, 6.0));
   }
 
   @Override

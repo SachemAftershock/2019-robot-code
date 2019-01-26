@@ -1,21 +1,22 @@
-package frc.robot;
+package frc.robot.Auton;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import frc.robot.SWDrive;
 
 import edu.wpi.first.wpilibj.Timer;
 
-class Autonomous {
+public class Autonomous {
     
     private static Autonomous autoInstance = new Autonomous();
-    private Queue<AutoTask> taskList;
-    AutoTask target;
+    private Queue<AutonBase> taskList;
+    AutonBase target;
     Timer autoTimer;
     boolean firstTimer;
     private SWDrive driveBase;
 
     private Autonomous() {
-        taskList = new LinkedList<AutoTask>();
+        taskList = new LinkedList<AutonBase>();
         driveBase = SWDrive.getInstance();
         autoTimer = new Timer();
         firstTimer = true;
@@ -24,14 +25,18 @@ class Autonomous {
 
     public void drive() {
         if(taskList.size() == 0 && setpointReached()) {
+            System.out.println("Autonomous Finished");
             return;
         }
 
-        if(target == null || setpointReached()) {
+        if(target == null || setpointReached() || autoTimer.hasPeriodPassed(2.0)) {
             target = taskList.poll();
+            autoTimer.reset();
+
+            System.out.println("New Task: " + target.getTask());
         }
 
-        switch(target.getObjective()) {
+        switch(target.getTask()) {
             case LINEAR:
                 driveBase.autoDrive(target.getSetpoint());
                 break;
@@ -45,28 +50,20 @@ class Autonomous {
                 //}
                // break; 
             default:
-                System.out.println("Unknown Autonomous mode found: " + target.getObjective());
+                System.out.println("Unknown Autonomous mode found: " + target.getTask());
         }
     }
 
-    public void queueLinearDistance(Distance dist, double distance) {
-        taskList.add(new AutoTask(AutoObjective.LINEAR, distance * dist.getConversionFactor()));
+    public void queueObjective(AutonBase task) {
+        taskList.add(task);
     }
-
-    public void queueAutoRotate(Rotation rot, double theta) {
-        taskList.add(new AutoTask(AutoObjective.ROTATE, theta * rot.getDirection()));
-    }
-
-    //public void queueWait(double seconds) {
-    //    taskList.add(new AutoTask(AutoObjective.WAIT, seconds));
-    //}
 
     public static Autonomous getInstance() {
         return autoInstance;
     }
 
     public boolean setpointReached() {
-        switch(target.getObjective()) {
+        switch(target.getTask()) {
             case LINEAR:
             case ROTATE:
                 return driveBase.setpointReached();
