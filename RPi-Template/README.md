@@ -2,6 +2,9 @@
 
 Contains the code to build and modify the Raspberry Pi image used for the 2019 competition season. The home repository for this image can be found [here](https://github.com/DanWaxman/pi-gen), and the repository for the original Raspberry Pi image tool can be found [here](https://github.com/RPi-Distro/pi-gen).
 
+## Image Download
+A pre-built image can be downloaded [here](https://drive.google.com/drive/folders/1g3sQ0j_MxOckwHGxDvb_tpWGxWp1JH9I?usp=sharing) (warning, large file). It can then be flashed to a MicroSD card with [Etcher](https://www.balena.io/etcher/).
+
 ## Dependencies and Usage
 For an up-to-date and complete set of instructions on how to use this tool, please refer to the [official pi-gen repo](https://github.com/RPi-Distro/pi-gen). 
 
