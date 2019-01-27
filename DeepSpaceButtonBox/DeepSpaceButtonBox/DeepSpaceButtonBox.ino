@@ -208,7 +208,7 @@ void loop() {
   }
 
   // a brief delay, so this runs 20 times per second
-  delay(1000);
+  delay(50);
 }
 
 void clearAllElevatorButtons() {
