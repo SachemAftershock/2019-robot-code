@@ -164,7 +164,7 @@ void loop() {
     // previous), go with that one.
     if (digitalRead(Elevator_LUT[i]) == ARCADE_BUTTON_PRESSED){
         if (Elevator_LUT[i] != Elevator_LUT[LastLevelButtonPressed]){
-          clearAllJoystickButtons();
+          clearAllElevatorButtons();
           Joystick.button(i, JOYSTICK_BUTTON_PRESSED); 
           digitalWrite(LED_LUT[LastLevelButtonPressed], LOW);
           LastLevelButtonPressed = i;
@@ -211,7 +211,7 @@ void loop() {
   delay(1000);
 }
 
-void clearAllJoystickButtons() {
+void clearAllElevatorButtons() {
   for (int i=0; i<NumElevatorPositions; i++){
     Joystick.button(i, JOYSTICK_BUTTON_RELEASED);
   }
