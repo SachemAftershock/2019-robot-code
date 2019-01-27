@@ -63,20 +63,28 @@ void loop() {
   // Written so that USB messages only sent if there is a button pressed and it is
   // changed from the last button pressed.
   
-  int readValue = -1;
+  //int readValue = -1;
   
   // Scan the elevator level buttons for a pressed button.
   for (int i=0; i<NumElevatorPositions; i++){
-    // find first elevator level button that is pressed, go with that one.
-    if (((readValue = digitalRead(i)) == BUTTON_PRESSED) && (readValue != LastLevelButtonPressed)) {
+    // find first elevator level button that is pressed (that ain't same as 
+    // previous), go with that one.
+    if ((digitalRead(i) == BUTTON_PRESSED) && (i != LastLevelButtonPressed)) {
       Joystick.button(i, BUTTON_PRESSED);
+      LastLevelButtonPressed = i;
       break;
     }
   }
 
   // Inspect the Hatch/Cargo button whether a toggle is to be commanded.
-  if ((readValue = digitalRead(Button14_CargoHatchToggle)) != lastCargoHatchToggle) {
-    Joystick.button(Button14_CargoHatchToggle, readValue);
+  if (digitalRead(Button14_CargoHatchToggle) == BUTTON_PRESSED) {
+    // Boolean/logical operators in C are required to yield either 0 or 1. 
+    // From section 6.5.3.3/5 of the ISO C99 standard.  The result of the 
+    // logical negation operator ! is 0 if the value of its operand compares 
+    // unequal to 0, 1 if the value of its operand compares equal to 0.
+    // https://stackoverflow.com/questions/3661751/what-is-0-in-c
+    lastCargoHatchToggle = !lastCargoHatchToggle;  
+    Joystick.button(Button14_CargoHatchToggle, lastCargoHatchToggle);
   }
 
   // a brief delay, so this runs 20 times per second
