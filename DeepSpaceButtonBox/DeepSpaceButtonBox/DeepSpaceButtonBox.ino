@@ -16,13 +16,15 @@ const int JOYSTICK_BUTTON_RELEASED = 0;
 
 // Buttons to command Elevator Floors w/ implicit base heights 
 // and required angle of attacks relative to downfield 0 az.
-const int Button0_Floor = 0;
+// The numbers here represent the Teensy's DIO's. Silkscreen D0..7, 
+// then just keep counting as if all were Dx through Ex, Cx etc per Arduino pin numbering.
+const int Button0_Floor = 0; 
 const int Button1_RocketLowerLeft = 1;
 const int Button2_RocketLowerMiddle = 2;
 const int Button3_RocketLowerRight = 3;
 const int Button4_RocketMediumLeft = 4;
 const int Button5_RocketMediumMiddle = 5;
-const int Button6_RocketMediumRight = 41; // My DIO6 seems to be stuck LOW, so keeps triggering.
+const int Button6_RocketMediumRight = 41; // My DIO D6 seems to be stuck LOW, so keeps triggering.
 const int Button7_RocketHighLeft = 7;
 const int Button8_RocketHighMiddle = 8;
 const int Button9_RocketHighRight = 9;
@@ -165,14 +167,14 @@ void loop() {
     if (digitalRead(Elevator_LUT[i]) == ARCADE_BUTTON_PRESSED){
         if (Elevator_LUT[i] != Elevator_LUT[LastLevelButtonPressed]){
           clearAllElevatorButtons();
-          Joystick.button(i, JOYSTICK_BUTTON_PRESSED); 
+          Joystick.button(i+1, JOYSTICK_BUTTON_PRESSED); 
           digitalWrite(LED_LUT[LastLevelButtonPressed], LOW);
           LastLevelButtonPressed = i;
           digitalWrite(LED_LUT[LastLevelButtonPressed], HIGH);
           Serial.print("Elevator Button Pressed: Arcade DIO#");
           Serial.print(Elevator_LUT[i]);
           Serial.print(", Joystick Button #");
-          Serial.print(LastLevelButtonPressed);
+          Serial.print(LastLevelButtonPressed+1);
           Serial.println(".");
           break;
       }
@@ -197,9 +199,9 @@ void loop() {
           digitalWrite(LED_15_Hatch, HIGH);
           break;
       }
-      Joystick.button(Button14_CargoHatchToggle, lastCargoHatchToggle);
+      Joystick.button(Button14_CargoHatchToggle+1, lastCargoHatchToggle);
       Serial.print("Cargo/Hatch Button Pressed, commanded: ");
-      Serial.println(lastCargoHatchToggle);
+      Serial.println(lastCargoHatchToggle+1);
     }
   }
   else
@@ -213,6 +215,6 @@ void loop() {
 
 void clearAllElevatorButtons() {
   for (int i=0; i<NumElevatorPositions; i++){
-    Joystick.button(i, JOYSTICK_BUTTON_RELEASED);
+    Joystick.button(i+1, JOYSTICK_BUTTON_RELEASED);
   }
 }
