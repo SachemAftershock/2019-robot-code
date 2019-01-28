@@ -166,8 +166,8 @@ void loop() {
     // previous), go with that one.
     if (digitalRead(Elevator_LUT[i]) == ARCADE_BUTTON_PRESSED){
         if (Elevator_LUT[i] != Elevator_LUT[LastLevelButtonPressed]){
-          clearAllElevatorButtons();
-          Joystick.button(i+1, JOYSTICK_BUTTON_PRESSED); 
+          clearAllXboxControllerElevatorButtons();
+          SetXboxControllerButton(i, JOYSTICK_BUTTON_PRESSED); 
           digitalWrite(LED_LUT[LastLevelButtonPressed], LOW);
           LastLevelButtonPressed = i;
           digitalWrite(LED_LUT[LastLevelButtonPressed], HIGH);
@@ -199,7 +199,7 @@ void loop() {
           digitalWrite(LED_15_Hatch, HIGH);
           break;
       }
-      Joystick.button(Button14_CargoHatchToggle+1, lastCargoHatchToggle);
+      SetXboxControllerButton(Button14_CargoHatchToggle, lastCargoHatchToggle);
       Serial.print("Cargo/Hatch Button Pressed, commanded: ");
       Serial.println(lastCargoHatchToggle+1);
     }
@@ -213,8 +213,12 @@ void loop() {
   delay(50);
 }
 
-void clearAllElevatorButtons() {
+void clearAllXboxControllerElevatorButtons() {
   for (int i=0; i<NumElevatorPositions; i++){
-    Joystick.button(i+1, JOYSTICK_BUTTON_RELEASED);
+    SetXboxControllerButton(i, JOYSTICK_BUTTON_RELEASED);
   }
+}
+
+void SetXboxControllerButton(int dioPin, int pressedState) {
+  Joystick.button(dioPin+1, pressedState);
 }
