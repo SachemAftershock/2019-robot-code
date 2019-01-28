@@ -18,43 +18,43 @@ const int JOYSTICK_BUTTON_RELEASED = 0;
 // and required angle of attacks relative to downfield 0 az.
 // The numbers here represent the Teensy's DIO's. Silkscreen D0..7, 
 // then just keep counting as if all were Dx through Ex, Cx etc per Arduino pin numbering.
-const int Button0_Floor = 0; 
-const int Button1_RocketLowerLeft = 1;
-const int Button2_RocketLowerMiddle = 2;
-const int Button3_RocketLowerRight = 3;
-const int Button4_RocketMediumLeft = 4;
-const int Button5_RocketMediumMiddle = 5;
-const int Button6_RocketMediumRight = 41; // My DIO D6 seems to be stuck LOW, so keeps triggering.
-const int Button7_RocketHighLeft = 7;
-const int Button8_RocketHighMiddle = 8;
-const int Button9_RocketHighRight = 9;
-const int Button10_CargoLeft = 10;
-const int Button11_CargoFront = 11;
-const int Button12_CargoRight = 12;
-const int Button13_HumanPlayerStation = 13;
+const int ArcadeButton0_Floor = 0; 
+const int ArcadeButton1_RocketLowerLeft = 1;
+const int ArcadeButton2_RocketLowerMiddle = 2;
+const int ArcadeButton3_RocketLowerRight = 3;
+const int ArcadeButton4_RocketMediumLeft = 4;
+const int ArcadeButton5_RocketMediumMiddle = 5;
+const int ArcadeButton6_RocketMediumRight = 41; // My DIO D6 seems to be stuck LOW, so keeps triggering.
+const int ArcadeButton7_RocketHighLeft = 7;
+const int ArcadeButton8_RocketHighMiddle = 8;
+const int ArcadeButton9_RocketHighRight = 9;
+const int ArcadeButton10_CargoLeft = 10;
+const int ArcadeButton11_CargoFront = 11;
+const int ArcadeButton12_CargoRight = 12;
+const int ArcadeButton13_HumanPlayerStation = 13;
 
 // Button to command Grabber Orientation, and implicit offsets 
 // to elevator base heights. 
-const int Button14_CargoHatchToggle = 14;
+const int ArcadeButton14_CargoHatchToggle = 14;
 
-const int NumElevatorPositions = Button13_HumanPlayerStation+1;
+const int NumElevatorPositions = ArcadeButton13_HumanPlayerStation+1;
 
 int Elevator_LUT[] = { 
-  Button0_Floor,
-  Button1_RocketLowerLeft,
-  Button2_RocketLowerMiddle,
-  Button3_RocketLowerRight,
-  Button4_RocketMediumLeft,
-  Button5_RocketMediumMiddle,
-  Button6_RocketMediumRight,
-  Button7_RocketHighLeft,
-  Button8_RocketHighMiddle,
-  Button9_RocketHighRight,
-  Button10_CargoLeft,
-  Button11_CargoFront,
-  Button12_CargoRight,
-  Button13_HumanPlayerStation,
-  Button14_CargoHatchToggle
+  ArcadeButton0_Floor,
+  ArcadeButton1_RocketLowerLeft,
+  ArcadeButton2_RocketLowerMiddle,
+  ArcadeButton3_RocketLowerRight,
+  ArcadeButton4_RocketMediumLeft,
+  ArcadeButton5_RocketMediumMiddle,
+  ArcadeButton6_RocketMediumRight,
+  ArcadeButton7_RocketHighLeft,
+  ArcadeButton8_RocketHighMiddle,
+  ArcadeButton9_RocketHighRight,
+  ArcadeButton10_CargoLeft,
+  ArcadeButton11_CargoFront,
+  ArcadeButton12_CargoRight,
+  ArcadeButton13_HumanPlayerStation,
+  ArcadeButton14_CargoHatchToggle
 };
 
 
@@ -63,7 +63,7 @@ int Elevator_LUT[] = {
 // TODO: at this time, there is no provision for the Teensy and RoboRIO to re-synchronize these 
 // last commanded value state, which would be preferred feedback from the RoboRIO.  Find a way 
 // for RoboRIO to communicate back to this HID device to drive these variables and the LEDs.
-int LastLevelButtonPressed = Button2_RocketLowerMiddle;
+int LastLevelButtonPressed = ArcadeButton2_RocketLowerMiddle;
 enum enumCargoHatchToggle { eHatch = 0, eCargo = 1 } lastCargoHatchToggle = eHatch;
 
 // Each elevator level button has one LED positioned underneath it.
@@ -114,24 +114,24 @@ void setup() {
   
   // Configure DIOs for Rocket & Cargo Bay & human station buttons (one button per).
   // Each button drives distinct elevator level base target
-  pinMode(Button0_Floor, INPUT_PULLUP);  
-  pinMode(Button1_RocketLowerLeft, INPUT_PULLUP); 
-  pinMode(Button2_RocketLowerMiddle, INPUT_PULLUP); 
-  pinMode(Button3_RocketLowerRight, INPUT_PULLUP); 
-  pinMode(Button4_RocketMediumLeft, INPUT_PULLUP); 
-  pinMode(Button5_RocketMediumMiddle, INPUT_PULLUP); 
-  pinMode(Button6_RocketMediumRight, INPUT_PULLUP); 
-  pinMode(Button7_RocketHighLeft, INPUT_PULLUP); 
-  pinMode(Button8_RocketHighMiddle, INPUT_PULLUP); 
-  pinMode(Button9_RocketHighRight, INPUT_PULLUP); 
-  pinMode(Button10_CargoLeft, INPUT_PULLUP); 
-  pinMode(Button11_CargoFront, INPUT_PULLUP); 
-  pinMode(Button12_CargoRight, INPUT_PULLUP); 
-  pinMode(Button13_HumanPlayerStation, INPUT_PULLUP); 
+  pinMode(ArcadeButton0_Floor, INPUT_PULLUP);  
+  pinMode(ArcadeButton1_RocketLowerLeft, INPUT_PULLUP); 
+  pinMode(ArcadeButton2_RocketLowerMiddle, INPUT_PULLUP); 
+  pinMode(ArcadeButton3_RocketLowerRight, INPUT_PULLUP); 
+  pinMode(ArcadeButton4_RocketMediumLeft, INPUT_PULLUP); 
+  pinMode(ArcadeButton5_RocketMediumMiddle, INPUT_PULLUP); 
+  pinMode(ArcadeButton6_RocketMediumRight, INPUT_PULLUP); 
+  pinMode(ArcadeButton7_RocketHighLeft, INPUT_PULLUP); 
+  pinMode(ArcadeButton8_RocketHighMiddle, INPUT_PULLUP); 
+  pinMode(ArcadeButton9_RocketHighRight, INPUT_PULLUP); 
+  pinMode(ArcadeButton10_CargoLeft, INPUT_PULLUP); 
+  pinMode(ArcadeButton11_CargoFront, INPUT_PULLUP); 
+  pinMode(ArcadeButton12_CargoRight, INPUT_PULLUP); 
+  pinMode(ArcadeButton13_HumanPlayerStation, INPUT_PULLUP); 
 
   // Toggle for Cargo/Hatch offsets for each elevator level target.  The offset will be 
   // added to the base level identified by the Base Level Target. 
-  pinMode(Button14_CargoHatchToggle, INPUT_PULLUP); 
+  pinMode(ArcadeButton14_CargoHatchToggle, INPUT_PULLUP); 
 
   // Configure DIOs for each LED on the box.
   pinMode(LED_00_Floor, OUTPUT);  
@@ -183,7 +183,7 @@ void loop() {
   }
 
   // Inspect the Hatch/Cargo button whether a toggle is to be commanded.
-  if (digitalRead(Button14_CargoHatchToggle) == ARCADE_BUTTON_PRESSED) {
+  if (digitalRead(ArcadeButton14_CargoHatchToggle) == ARCADE_BUTTON_PRESSED) {
     // Make sure to ignore until button is released, don't keep re-commanding if leaning on button.
     if (previousToggleIteration == ARCADE_BUTTON_RELEASED) {  
       previousToggleIteration = ARCADE_BUTTON_PRESSED;
@@ -199,7 +199,7 @@ void loop() {
           digitalWrite(LED_15_Hatch, HIGH);
           break;
       }
-      SetXboxControllerButton(Button14_CargoHatchToggle, lastCargoHatchToggle);
+      SetXboxControllerButton(ArcadeButton14_CargoHatchToggle, lastCargoHatchToggle);
       Serial.print("Cargo/Hatch Button Pressed, commanded: ");
       Serial.println(lastCargoHatchToggle+1);
     }
@@ -214,11 +214,11 @@ void loop() {
 }
 
 void clearAllXboxControllerElevatorButtons() {
-  for (int i=0; i<NumElevatorPositions; i++){
-    SetXboxControllerButton(i, JOYSTICK_BUTTON_RELEASED);
+  for (int arcadeButtonIndex=0; arcadeButtonIndex<NumElevatorPositions; arcadeButtonIndex++){
+    SetXboxControllerButton(arcadeButtonIndex, JOYSTICK_BUTTON_RELEASED);
   }
 }
 
-void SetXboxControllerButton(int dioPin, int pressedState) {
-  Joystick.button(dioPin+1, pressedState);
+void SetXboxControllerButton(int logicalOrderedArcadeButton, int pressedState) {
+  Joystick.button(logicalOrderedArcadeButton+1, pressedState);
 }
