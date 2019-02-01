@@ -54,7 +54,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    drive.zero();
+    drive.zero();//TODO: Remove this after testing
   }
 
   @Override

@@ -43,12 +43,6 @@ public class Autonomous {
             case ROTATE:
                 driveBase.autoRotate(target.getSetpoint());
                 break;
-            //case WAIT:
-              //  if(firstTimer) {
-                //    autoTimer.reset();
-                  //  firstTimer = false;
-                //}
-               // break; 
             default:
                 System.out.println("Unknown Autonomous mode found: " + target.getTask());
         }
@@ -67,12 +61,6 @@ public class Autonomous {
             case LINEAR:
             case ROTATE:
                 return driveBase.setpointReached();
-            //case WAIT:
-            //    if(autoTimer.get() > target.getSetpoint()) {
-            //        firstTimer = true;
-             //       return true;
-               // }
-                //return false;
             default:
                 return true;
         }
