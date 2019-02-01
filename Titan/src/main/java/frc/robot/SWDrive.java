@@ -5,24 +5,26 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.kauailabs.navx.frc.AHRS;
-
 import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
-import edu.wpi.first.wpilibj.SerialPort.Port;
+import edu.wpi.first.wpilibj.I2C.Port;
+import edu.wpi.first.wpilibj.XboxController; 
 
-public class SWDrive {
+class SWDrive extends Mechanism {
+
     private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
-    private boolean tankEnabled, setpointReached;
+    private XboxController controller;
+    private boolean tankEnabled, setpointReached, rotateSet;
     private AHRS navx;
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
-    private PIDController controller;
+    private PIDController pid;
 
     private SWDrive() {
+        super();
+
         leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
@@ -64,9 +66,12 @@ public class SWDrive {
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
 
         navx = new AHRS(Port.kMXP);
-        controller = new PIDController();
+        controller = new XboxController(Constants.PRIMARY_DRIVER_PORT);
+        pid = new PIDController();
+
         tankEnabled = false;
         setpointReached = true;
+        rotateSet = false;
         leftTarget = 0;
         rightTarget = 0;
     }
@@ -75,15 +80,35 @@ public class SWDrive {
         return driveInstance;
     }
 
-    public void drive(XboxController controller) {
+    public void drive() {
         if(controller.getBackButtonReleased()) {
-            tankEnabled = !tankEnabled;
+            setpointReached = true;
+            super.flush();
         }
 
-        if(tankEnabled) {
-            tankDrive(controller);
+        if(!setpointReached || super.size() > 0) {
+            if(target == null || setpointReached) {
+                target = super.pop();
+            }
+
+            switch(target.getObjective()) {
+                case DRIVELINEAR:
+                    autoDrive(target.getSetpoint());
+                    break;
+                case DRIVEROTATE:
+                    autoRotate(target.getSetpoint());
+                    break;
+                default:
+                    break;
+            }
+        } else if(tankEnabled) {
+            tankDrive();
         } else {
-            arcadeDrive(controller);
+            arcadeDrive();
+        }
+       
+        if(controller.getPOV() >= 0 && !rotateSet) {
+            super.push(new RotateCmd(controller.getPOV()));
         }
 
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
@@ -91,38 +116,14 @@ public class SWDrive {
         } else if(controller.getAButtonReleased() && gearSolenoid.get() != Value.kReverse) {
             gearSolenoid.set(Value.kReverse);
         }
+
+
+        if(controller.getStartButtonReleased()) {
+            tankEnabled = !tankEnabled;
+        }
+
+        rotateSet = controller.getPOV() >= 0;
     }
-
-    private void tankDrive(XboxController controller) {
-        double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
-        double rightY = Utilities.deadband(controller.getY(Hand.kRight), 0.1);
-        double leftTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1);
-        double rightTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1);
-
-        double leftSpeed = leftY - leftTrigger + rightTrigger;
-        double rightSpeed = rightY + leftTrigger - rightTrigger;
-        double[] speeds = {leftSpeed, rightSpeed};
-        speeds = Utilities.normalize(speeds);
-
-        driveMotors(-speeds[0],  -speeds[1]);
-    }
-
-    private void arcadeDrive(XboxController controller) {
-        double leftY = -Utilities.deadband(controller.getX(Hand.kRight), 0.2);
-        double rightX = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
-
-        double leftSpeed = leftY + rightX;
-        double rightSpeed = leftY - rightX;
-        double[] speeds = {leftSpeed, rightSpeed};
-        speeds = Utilities.normalize(speeds);
- 
-        driveMotors(-speeds[0], speeds[1]);
-    }
-
-    private void driveMotors(double leftSpeed, double rightSpeed) {
-        leftMaster.set(ControlMode.PercentOutput, leftSpeed);
-        rightMaster.set(ControlMode.PercentOutput, rightSpeed);
-    } 
 
     public void autoDrive(double setpoint) {
         if(setpointReached) {
@@ -140,16 +141,14 @@ public class SWDrive {
     public void autoRotate(double theta) {
         if(setpointReached) {
             setpointReached = false;
-            controller.start(Constants.ROTATE_GAINS, navx.getYaw() + theta, navx.getYaw());
+            pid.start(Constants.ROTATE_GAINS, theta);
         }
 
-        double output = controller.update(navx.getYaw());
+        double yaw = navx.getYaw();
+        double output = pid.update(yaw < 0 ? yaw + 360 : yaw);
         driveMotors(output, -output);
-        setpointReached = Math.abs(controller.getError()) < Constants.ROTATE_EPSILON;
-    }
 
-    public boolean setpointReached() {
-        return setpointReached;
+        setpointReached = Math.abs(pid.getError()) < Constants.ROTATE_EPSILON;
     }
 
     public void zero() {
@@ -158,55 +157,37 @@ public class SWDrive {
         rightMaster.setSelectedSensorPosition(0, 0, 0);
     }
 
-    class PIDController {
+    private void tankDrive() {
+        
+        double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
+        double rightY = Utilities.deadband(controller.getY(Hand.kRight), 0.1);
+        double leftTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1);
+        double rightTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1);
 
-        private double kP, kI, kD, setpoint, integral, derivative, error, prevError;
-        private Timer timer;
-        public PIDController() {
-            kP = 0.0;
-            kI = 0.0;
-            kD = 0.0;
-            setpoint = 0.0;
-            integral = 0.0;
-            derivative = 0.0;
-            error = 0.0;
-            prevError = 0.0;
+        double leftSpeed = leftY - leftTrigger + rightTrigger;
+        double rightSpeed = rightY + leftTrigger - rightTrigger;
+        double[] speeds = {-leftSpeed, -rightSpeed};
 
-            timer = new Timer();
-        }
-
-        public double getError() {
-            return error;
-        }
-
-        public double getRuntime() {
-            return timer.get();
-        }
-
-        public double update(double current) {
-            error = setpoint - current;
-            integral += error;
-            derivative = error - prevError;
-
-            double output = kP * error + kI * integral + kD * derivative;
-
-            prevError = error;
-            System.out.println("PIDController::Update current: " + current + ", error: " + error + ", setpoint: " + setpoint + ", output: " + output );
-            return Math.abs(output) > 1.0 ? output / output : output;
-        }
-
-        public void start(double[] gains, double setpoint, double current) {
-            kP = gains[0];
-            kI = gains[1];
-            kD = gains[2];
-            this.setpoint = setpoint;
-            integral = 0.0;
-            derivative = 0.0;
-            error = 0.0;
-            prevError = 0.0;
-            timer.start();
-            
-        }
+        driveMotors(Utilities.normalize(speeds));
     }
 
+    private void arcadeDrive() {
+        double leftY = -Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
+        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
+
+        double leftSpeed = leftY + rightX;
+        double rightSpeed = leftY - rightX;   
+        double[] speeds = {leftSpeed, rightSpeed};
+        
+        driveMotors(Utilities.normalize(speeds));
+    }
+
+    private void driveMotors(double[] speeds) {
+        driveMotors(speeds[0], speeds[1]);
+    }
+
+    private void driveMotors(double leftSpeed, double rightSpeed) {
+        leftMaster.set(ControlMode.PercentOutput, leftSpeed);
+        rightMaster.set(ControlMode.PercentOutput, rightSpeed);
+    } 
 }
