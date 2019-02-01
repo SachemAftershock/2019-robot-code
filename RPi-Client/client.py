@@ -5,17 +5,11 @@ import struct
 import socket
 import cv2
 
-DEBUG = True
-
-def dbgprint(string):
-	if DEBUG:
-		print(string)
-
 class Camera:
-	def __init__(self, index, height, width):
+	def __init__(self, index, width, height):
 		self.cam = cv2.VideoCapture(index)
-		self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 		self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+		self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
 	def get_frame(self):
 		ret, frame = self.cam.read()
@@ -31,49 +25,72 @@ class Camera:
 		self.cam.release()
 
 class Communication:
-	def __init__(self, address, port, cam_index, max_packet_index = 65000, stream_height = 320, stream_width = 240):
+	def __init__(self, address, port):
 		self.comm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.comm_socket.settimeout(1.0)
 		self.server = (address, port)
+		self.packet_size = 65000
 
-		self.packet_size = max_packet_index
-
-		self.cam = Camera(cam_index, stream_height, stream_width)
-		self.stream_height = stream_height
-		self.stream_width = stream_width
-
-		atexit.register(self.release)
-
-	def get_compressed_frame(self):
-		return cv2.imencode('.jpg', self.cam.get_frame())[1].tostring()
-
+	def compress(self, frame):
+		#return base64.b64encode(cv2.imencode('.jpg', frame)[1])
+		if frame is None:
+			return None
+		return cv2.imencode('.jpg', frame)[1].tostring()
+		
 	def itob(self, value):
 		return struct.pack('!i', value)
 
-	def send_frame(self, compressed_frame):
+	def send_frame(self, frame):
+		compressed_frame = self.compress(frame)
+		if compressed_frame is None:
+			return
+			
+		length = self.itob(len(compressed_frame))
+		print(len(compressed_frame))
+		#streams = self.itob(len(frame))
+		#print('Client length:', length, len(compressed_frame))
+		self.comm_socket.sendto(length, self.server)
+		#self.comm_socket.sendto(streams, self.server)
+
+		try:
+			data, server = self.comm_socket.recvfrom(1)
+			#print(data, 'recieved from', server)
+		except socket.timeout:
+			#print('timeout')
+			return
+		except KeyboardInterrupt:
+			return;
+
 		sent = 0
 		while sent < len(compressed_frame):
 			self.comm_socket.sendto(compressed_frame[sent:sent + self.packet_size], self.server)
 			sent += self.packet_size
 
-	def sender_thread(self):
-		try:
-			compressed_frame = self.get_compressed_frame()
-			b_frame_length = self.itob(len(compressed_frame))
-
-			self.comm_socket.sendto(b_frame_length, self.server)
-			self.send_frame(compressed_frame)
-		except Exception as e:
-			dbgprint('Exception caught in sender_thread: {0}'.format(str(e)))
-
 	def release(self):
 		self.comm_socket.close()
-		self.cam.release()
 
 def main():
-	comm = Communication('10.2.63.5', 5804, 0)
+	cam = Camera(0, 320, 240)
+	cam1 = Camera(1, 320, 240)
+	cam2 = Camera(2, 320, 240)
+
+	comm = Communication('10.2.63.5', 5809)
+	comm1 = Communication('10.2.63.5', 5810)
+	comm2 = Communication('10.2.63.5', 5808)
+
+	atexit.register(cam.release)
+	atexit.register(comm.release)
+
+	atexit.register(cam1.release)
+	atexit.register(comm1.release)
+
+	atexit.register(cam2.release)
+	atexit.register(comm2.release)
+
 	while True:
-		comm.sender_thread()
+		comm.send_frame(cam.get_frame())
+		comm1.send_frame(cam1.get_frame())
+		comm2.send_frame(cam2.get_frame())
 
 if __name__ == '__main__':
 	main()
