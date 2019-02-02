@@ -21,6 +21,10 @@ class PIDController {
 
     public double update(double current) {
         error = setpoint - current;
+        return this.updateError(error);
+    }
+
+    public double updateError(double error) {
         integral += error;
         derivative = error - prevError;
 

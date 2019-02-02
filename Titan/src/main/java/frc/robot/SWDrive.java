@@ -5,6 +5,7 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.kauailabs.navx.frc.AHRS;
+
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
@@ -139,13 +140,14 @@ class SWDrive extends Mechanism {
     }
 
     public void autoRotate(double theta) {
+        theta = theta > 180 ? theta - 360 : theta; //map from [0, 360] to [-180, 180]
+
         if(setpointReached) {
             setpointReached = false;
             pid.start(Constants.ROTATE_GAINS, theta);
         }
 
-        double yaw = navx.getYaw();
-        double output = pid.update(yaw < 0 ? yaw + 360 : yaw);
+        double output = pid.updateError(Utilities.rotationalError(navx.getYaw(), theta));
         driveMotors(output, -output);
 
         setpointReached = Math.abs(pid.getError()) < Constants.ROTATE_EPSILON;

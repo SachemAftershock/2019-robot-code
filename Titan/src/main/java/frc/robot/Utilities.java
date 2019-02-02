@@ -20,4 +20,25 @@ class Utilities {
         }
         return values;
     }
+
+    /**
+         * Thanks Dan :) 
+		 * Gets rotational error on [-180, 180]
+		 * 
+		 * @param alpha
+		 *            First angle
+		 * @param beta
+		 *            Second Angle
+		 * @return Rotational error
+		 */
+    public static double rotationalError(double alpha, double beta) {
+        double ret = alpha - beta;
+        if (ret < -180) {
+            ret += 360;
+        }
+        if (ret > 180) {
+            ret -= 360;
+        }
+        return ret;
+    }
 }
