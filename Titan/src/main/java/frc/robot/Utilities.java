@@ -39,6 +39,16 @@ class Utilities {
         if (ret > 180) {
             ret -= 360;
         }
-        return ret;
+        return -ret;
+    }
+
+    public static double normalizeAngle(double theta) {
+        if(theta > 180) {
+            theta -= 360;
+        } else if(theta < -180) {
+            theta += 360;
+        }
+
+        return theta;
     }
 }

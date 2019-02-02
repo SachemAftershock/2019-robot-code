@@ -13,7 +13,7 @@ public class Constants {
     public static final int DRIVE_SOLENOID_REVERSE = 1;
 
     public static final double[] LINEAR_GAINS = {0.75, 0.0, 10};
-    public static final double[] ROTATE_GAINS = {0.0105, 0.01, 0.03};
+    public static final double[] ROTATE_GAINS = {0.016, 0.0001, 0.18};
     public static final double ROTATE_EPSILON = 3;
     public static final int LINEAR_EPSILON = 200;
 

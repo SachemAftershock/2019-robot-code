@@ -109,7 +109,7 @@ class SWDrive extends Mechanism {
         }
        
         if(controller.getPOV() >= 0 && !rotateSet) {
-            super.push(new RotateCmd(controller.getPOV()));
+            super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
         }
 
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
@@ -122,7 +122,7 @@ class SWDrive extends Mechanism {
         if(controller.getStartButtonReleased()) {
             tankEnabled = !tankEnabled;
         }
-
+        
         rotateSet = controller.getPOV() >= 0;
     }
 
@@ -140,14 +140,15 @@ class SWDrive extends Mechanism {
     }
 
     public void autoRotate(double theta) {
-        theta = theta > 180 ? theta - 360 : theta; //map from [0, 360] to [-180, 180]
+        theta = Utilities.normalizeAngle(theta);
 
         if(setpointReached) {
             setpointReached = false;
             pid.start(Constants.ROTATE_GAINS, theta);
+            //System.out.println(navx.getYaw() + " " + theta + " " + (navx.getYaw() - theta));
         }
-
         double output = pid.updateError(Utilities.rotationalError(navx.getYaw(), theta));
+
         driveMotors(output, -output);
 
         setpointReached = Math.abs(pid.getError()) < Constants.ROTATE_EPSILON;
