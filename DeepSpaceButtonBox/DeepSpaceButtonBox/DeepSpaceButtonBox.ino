@@ -24,7 +24,7 @@ const int ArcadeButton2_RocketLowerMiddle = 2;
 const int ArcadeButton3_RocketLowerRight = 3;
 const int ArcadeButton4_RocketMediumLeft = 4;
 const int ArcadeButton5_RocketMediumMiddle = 5;
-const int ArcadeButton6_RocketMediumRight = 41; // My DIO D6 seems to be stuck LOW, so keeps triggering.
+const int ArcadeButton6_RocketMediumRight = 43; // DIO D6 seems to be stuck LOW, so keeps triggering. Must be because its the LED pin Pullup isn't working.
 const int ArcadeButton7_RocketHighLeft = 7;
 const int ArcadeButton8_RocketHighMiddle = 8;
 const int ArcadeButton9_RocketHighRight = 9;
@@ -78,14 +78,14 @@ const int LED_07_RocketHighLeft = 22;
 const int LED_08_RocketHighMiddle = 23;
 const int LED_09_RocketHighRight = 24;
 const int LED_10_CargoLeft = 25;
-const int LED_11_CargoFront = 26;
-const int LED_12_CargoRight = 27;
-const int LED_13_HumanPlayerStation = 38;
+const int LED_11_CargoFront = 38;
+const int LED_12_CargoRight = 39;
+const int LED_13_HumanPlayerStation = 42;
 
 // The Cargo/Hatch Toggle button has a LED on each side, 
 // to indicate which is the current setting.
-const int LED_14_Cargo = 39;
-const int LED_15_Hatch = 40;
+const int LED_14_Cargo = 40;
+const int LED_15_Hatch = 41;
 
 int LED_LUT[] = { 
   LED_00_Floor,
