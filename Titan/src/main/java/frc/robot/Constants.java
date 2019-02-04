@@ -31,8 +31,10 @@ public class Constants {
     //TODO: Finalize all Numbers Below
     public static final double INTAKE_SPEED = 0.6;
     public static final double[] TILT_GAINS = {0.0, 0.0, 0.0, 0.0, 0.0};
-    public static final int HATCH_SOLENOID_FORWARD = 2;
-    public static final int HATCH_SOLENOID_REVERSE = 3;
+    public static final int LEFT_HATCH_SOLENOID_FORWARD = 2;
+    public static final int LEFT_HATCH_SOLENOID_REVERSE = 3;
+    public static final int RIGHT_HATCH_SOLENOID_FORWARD = 4;
+    public static final int RIGHT_HATCH_SOLENOID_REVERSE = 5;
     public static final int INTAKE_MODE_TOGGLE_BUTTON = 14;
     public static final int CARGO_BUTTON_PORT = 0;
 

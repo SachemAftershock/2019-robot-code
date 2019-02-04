@@ -22,8 +22,10 @@ public class Intake extends Mechanism {
     private CANPIDController tiltPID;
     private DoubleSolenoid hatchPusher;
     private DigitalInput cargoButton;
+    private DoubleSolenoid leftHatchPiston, rightHatchPiston;
 
     private boolean taskCompleted;
+    private boolean hatchPistonsEngaged;
 
     public Intake() {
         super();
@@ -32,10 +34,13 @@ public class Intake extends Mechanism {
         leftArm.follow(rightArm);
         tiltMotor = new CANSparkMax(Constants.TILT_MOTOR_PORT, MotorType.kBrushless);
         tiltPID = new CANPIDController(tiltMotor);
-        hatchPusher = new DoubleSolenoid(Constants.HATCH_SOLENOID_FORWARD, Constants.HATCH_SOLENOID_REVERSE);
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
 
+        leftHatchPiston = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
+        rightHatchPiston = new DoubleSolenoid(Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
+
         taskCompleted = true;
+        hatchPistonsEngaged = false;
 
         tiltPID.setP(Constants.TILT_GAINS[0]);
         tiltPID.setI(Constants.TILT_GAINS[1]);
@@ -80,6 +85,10 @@ public class Intake extends Mechanism {
         } else {
             rightArm.set(ControlMode.PercentOutput, 0);
         }
+        
+        if(controller.getXButton()) {
+            toggleHatchPush();
+        }
 
         if(controller.getBumper(Hand.kLeft)) {
             changeIntakeMode(IntakePosition.HATCH);
@@ -115,6 +124,16 @@ public class Intake extends Mechanism {
         hatchPusher.set(Value.kReverse);
     }
 
+    public void toggleHatchPush() {
+        if(hatchPistonsEngaged) {
+            leftHatchPiston.set(Value.kReverse);
+            rightHatchPiston.set(Value.kReverse);
+        } else if(!hatchPistonsEngaged) {
+            leftHatchPiston.set(Value.kForward);
+            rightHatchPiston.set(Value.kForward);
+        }
+        hatchPistonsEngaged = !hatchPistonsEngaged;
+    }
     public void changeIntakeMode(IntakePosition targetPos) {
         tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
     }
