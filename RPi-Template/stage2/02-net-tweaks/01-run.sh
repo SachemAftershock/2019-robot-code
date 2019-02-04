@@ -8,6 +8,8 @@ install -v -m 600 files/wpa_supplicant.conf	"${ROOTFS_DIR}/etc/wpa_supplicant/"
 
 install -v -m 600 files/dhcpcd.conf "${ROOTFS_DIR}/etc/"
 
+install -v -m 644 files/NetworkUsage.py "${ROOTFS_DIR}/home/pi/"
+
 if [ -v WPA_COUNTRY ]
 then
 	echo "country=${WPA_COUNTRY}" >> "${ROOTFS_DIR}/etc/wpa_supplicant/wpa_supplicant.conf"
@@ -19,3 +21,8 @@ on_chroot <<EOF
 wpa_passphrase "${WPA_ESSID}" "${WPA_PASSWORD}" >> "/etc/wpa_supplicant/wpa_supplicant.conf"
 EOF
 fi
+
+on_chroot <<EOF
+echo "python3 /home/pi/NetworkUsage.py &" >> /etc/rc.local
+EOF
+
