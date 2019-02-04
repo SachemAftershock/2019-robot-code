@@ -1,6 +1,9 @@
-package frc.robot;
+package frc.robot.Commands;
 
-class DriveCmd extends BaseCmd {
+import frc.robot.Enums.AutoObjective;
+import frc.robot.Constants;
+
+public class DriveCmd extends BaseCmd {
     
     public DriveCmd(Distance metric, double distance) {
         super(AutoObjective.DRIVEROTATE, distance);

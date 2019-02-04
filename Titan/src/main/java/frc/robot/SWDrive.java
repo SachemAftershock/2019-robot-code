@@ -5,18 +5,21 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.kauailabs.navx.frc.AHRS;
+
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.XboxController; 
 
+import frc.robot.Commands.RotateCmd;
+
 class SWDrive extends Mechanism {
 
     private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
-    private boolean tankEnabled, setpointReached, rotateSet;
+    private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled;
     private AHRS navx;
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
@@ -72,6 +75,7 @@ class SWDrive extends Mechanism {
         tankEnabled = false;
         setpointReached = true;
         rotateSet = false;
+        antiTiltEnabled = true;
         leftTarget = 0;
         rightTarget = 0;
     }
@@ -85,6 +89,21 @@ class SWDrive extends Mechanism {
             setpointReached = true;
             super.flush();
         }
+
+        // Correct tilt if abs(tilt) > tiltThresh
+		// Map to 10-40% output
+        //TODO: Check if this works
+		// TODO: check if this should be absolute valued
+		// - i remember it working in gym but logically seems incorrect
+		// - should only the comparison be absolute valued?
+		float pitch = navx.getPitch();
+		if (antiTiltEnabled && Math.abs(pitch) > Constants.TILT_THRESHOLD && Math.abs(pitch) < 45) {
+			double slope = (0.4 - 0.1) / (45 - Constants.TILT_THRESHOLD);
+			double correctionOffset = slope * (pitch - Constants.TILT_THRESHOLD);
+			double[] tmp = { -controller.getY(Hand.kLeft) + correctionOffset, controller.getX(Hand.kRight) + correctionOffset };
+			Utilities.normalize(tmp);
+            driveMotors(tmp);
+		}
 
         if(!setpointReached || super.size() > 0) {
             if(target == null || setpointReached) {
@@ -120,6 +139,9 @@ class SWDrive extends Mechanism {
 
         if(controller.getStartButtonReleased()) {
             tankEnabled = !tankEnabled;
+        } 
+        if(controller.getBackButton()) { //TODO:Change Button
+            antiTiltEnabled = !antiTiltEnabled;
         }
 
         rotateSet = controller.getPOV() >= 0;
