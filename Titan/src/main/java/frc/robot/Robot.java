@@ -2,19 +2,16 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.XboxController;
 
 public class Robot extends TimedRobot {
 
-  XboxController primaryDriver;//, secondaryDriver;
-  SWDrive drive;
+  SWDrive driveBase;
   Compressor compressor;
 
   @Override
   public void robotInit() {
-    primaryDriver = new XboxController(Constants.PRIMARY_DRIVER_PORT);
-    //secondaryDriver = new XboxController(Constants.SECONDARY_DRIVER_PORT);
-    drive = SWDrive.getInstance();
+    driveBase = SWDrive.getInstance();
+
     compressor = new Compressor();
     compressor.start();
     compressor.setClosedLoopControl(true);
@@ -22,6 +19,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    driveBase.zero();
   }
 
   @Override
@@ -30,11 +28,12 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    driveBase.zero(); //TODO: remove after testing
   }
 
   @Override
   public void teleopPeriodic() {
-    drive.drive(primaryDriver);
+    driveBase.drive();
   }
 
   @Override
