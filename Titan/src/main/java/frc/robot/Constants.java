@@ -20,4 +20,7 @@ public class Constants {
     public static final double WHEEL_DIAMETER_INCHES = 6;
     public static final double WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_INCHES * Math.PI;
     public static final double ENCODER_TICKS_PER_ROT = 4096.0 / 3.0;
+
+    public static final double CUBE_SEARCH_ROTATE_SPEED = 0.5;
+    public static final double CUBE_SEARCH_EPSILON = 3;
 }

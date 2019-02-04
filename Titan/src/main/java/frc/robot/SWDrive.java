@@ -17,7 +17,7 @@ class SWDrive extends Mechanism {
     private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
-    private boolean tankEnabled, setpointReached, rotateSet;
+    private boolean tankEnabled, setpointReached, rotateSet, cubeSearch;
     private AHRS navx;
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
@@ -73,6 +73,7 @@ class SWDrive extends Mechanism {
         tankEnabled = false;
         setpointReached = true;
         rotateSet = false;
+        cubeSearch = false;
         leftTarget = 0;
         rightTarget = 0;
     }
@@ -99,6 +100,8 @@ class SWDrive extends Mechanism {
                 case DRIVEROTATE:
                     autoRotate(target.getSetpoint());
                     break;
+                case CUBESEARCH:
+                    rotateCube(target.getSetpoint());
                 default:
                     break;
             }
@@ -109,7 +112,14 @@ class SWDrive extends Mechanism {
         }
        
         if(controller.getPOV() >= 0 && !rotateSet) {
+            //TODO: bug below, make it get angle right before it sets motors
             super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
+        }
+
+        if(controller.getBumper(Hand.kLeft) && !cubeSearch) {
+            super.push(new CubeSearchCmd(-1.0)); //TODO: Make enum for (counter)clockwise
+        } else if(controller.getBumper(Hand.kRight) && !cubeSearch) {
+            super.push(new CubeSearchCmd(1.0));
         }
 
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
@@ -124,6 +134,7 @@ class SWDrive extends Mechanism {
         }
         
         rotateSet = controller.getPOV() >= 0;
+        cubeSearch = controller.getBumper(Hand.kLeft) || controller.getBumper(Hand.kRight);
     }
 
     public void autoDrive(double setpoint) {
@@ -139,15 +150,31 @@ class SWDrive extends Mechanism {
         setpointReached = (Math.abs(leftMaster.getSelectedSensorPosition() - leftTarget) < Constants.LINEAR_EPSILON && Math.abs(rightMaster.getSelectedSensorPosition() - rightTarget) < Constants.LINEAR_EPSILON);
     }
 
-    public void autoRotate(double theta) {
-        theta = Utilities.normalizeAngle(theta);
-
+    public void rotateCube(double direction) {
         if(setpointReached) {
             setpointReached = false;
-            pid.start(Constants.ROTATE_GAINS, theta);
-            //System.out.println(navx.getYaw() + " " + theta + " " + (navx.getYaw() - theta));
+            pid.start(Constants.ROTATE_GAINS);
         }
-        double output = pid.updateError(Utilities.rotationalError(navx.getYaw(), theta));
+
+        if(Limelight.isTarget()) {
+            double normAngle = Utilities.normalizeAngle(Limelight.getTx());
+            double output = pid.updateRotation(navx.getYaw(), normAngle);
+
+            driveMotors(output, -output);
+        } else {
+            double speed = direction * Constants.CUBE_SEARCH_ROTATE_SPEED;
+            driveMotors(speed, -speed);
+        }
+
+        setpointReached = Limelight.isTarget() && Math.abs(Limelight.getTx()) < Constants.CUBE_SEARCH_EPSILON;
+    }
+
+    public void autoRotate(double theta) {
+        if(setpointReached) {
+            setpointReached = false;
+            pid.start(Constants.ROTATE_GAINS);
+        }
+        double output = pid.updateRotation(navx.getYaw(), Utilities.normalizeAngle(theta));
 
         driveMotors(output, -output);
 

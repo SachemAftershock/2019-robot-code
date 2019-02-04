@@ -1,7 +1,7 @@
 package frc.robot;
 
 class BaseCmd {
-    enum AutoObjective {DRIVELINEAR, DRIVEROTATE};
+    enum AutoObjective {DRIVELINEAR, DRIVEROTATE, CUBESEARCH};
 
     AutoObjective objective;
     double setpoint;

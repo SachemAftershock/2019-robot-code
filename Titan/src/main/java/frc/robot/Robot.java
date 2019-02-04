@@ -2,6 +2,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
+import frc.robot.Limelight.CameraMode;
 
 public class Robot extends TimedRobot {
 
@@ -19,6 +20,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    Limelight.setCameraMode(CameraMode.eVision);
     driveBase.zero();
   }
 
