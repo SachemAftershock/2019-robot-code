@@ -190,6 +190,16 @@ class SWDrive extends Mechanism {
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
+        float pitch = navx.getPitch();
+		if (Math.abs(pitch) > Constants.TILT_EPSILON && Math.abs(pitch) < 45) {
+			double slope = (0.4 - 0.1) / (45 - Constants.TILT_EPSILON);
+			double correctionOffset = slope * (pitch - Constants.TILT_EPSILON);
+			double[] tmp = { leftSpeed + correctionOffset, leftSpeed + correctionOffset };
+			Utilities.normalize(tmp);
+			leftSpeed = tmp[0];
+			rightSpeed = tmp[1];
+		}
+
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
