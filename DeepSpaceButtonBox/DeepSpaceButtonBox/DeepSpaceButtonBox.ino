@@ -157,7 +157,7 @@ void setup() {
   setAllLEDS();
   delay(1000);
   clearAllLEDS();
-  digitalWrite(LED_01_Floor, HIGH);
+  digitalWrite(LED_12_CargoFront, HIGH);
   digitalWrite(LED_16_Hatch, HIGH);
   
   Serial.println("Setup Complete");
