@@ -82,12 +82,12 @@ const int LED_10_RocketHighRight = 24;
 const int LED_11_CargoLeft = 25;
 const int LED_12_CargoFront = 38;
 const int LED_13_CargoRight = 39;
-const int LED_14_HumanPlayerStation = 42;
+const int LED_14_HumanPlayerStation = 40;
 
 // The Cargo/Hatch Toggle button has a LED on each side, 
 // to indicate which is the current setting.
-const int LED_15_Cargo = 40;
-const int LED_16_Hatch = 41;
+const int LED_15_Cargo = 41;
+const int LED_16_Hatch = 42;
 
 int LED_LUT[] = { 
   LED_01_Floor,
@@ -153,6 +153,12 @@ void setup() {
 
   pinMode(LED_15_Cargo, OUTPUT); 
   pinMode(LED_16_Hatch, OUTPUT); 
+
+  setAllLEDS();
+  delay(1000);
+  clearAllLEDS();
+  digitalWrite(LED_01_Floor, HIGH);
+  digitalWrite(LED_16_Hatch, HIGH);
   
   Serial.println("Setup Complete");
 }
@@ -218,6 +224,17 @@ void loop() {
 void clearAllXboxControllerElevatorButtons() {
   for (int arcadeButtonIndex=0; arcadeButtonIndex<NumElevatorPositions; arcadeButtonIndex++){
     SetXboxControllerButton(arcadeButtonIndex, JOYSTICK_BUTTON_RELEASED);
+  }
+}
+
+void setAllLEDS() {
+  for (int led : LED_LUT){
+    digitalWrite(led, HIGH);
+  }
+}
+void clearAllLEDS() {
+  for(int led : LED_LUT) {
+    digitalWrite(led, LOW);
   }
 }
 
