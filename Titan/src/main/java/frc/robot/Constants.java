@@ -19,6 +19,7 @@ public class Constants {
     public static final double[] ROTATE_GAINS = {0.0105, 0.01, 0.03};
     public static final double ROTATE_EPSILON = 3;
     public static final int LINEAR_EPSILON = 200;
+    public static final int TILT_EPSILON = 15;
 
     public static final double WHEEL_DIAMETER_INCHES = 6;
     public static final double WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_INCHES * Math.PI;
@@ -35,7 +36,7 @@ public class Constants {
     public static final int LEFT_HATCH_SOLENOID_REVERSE = 3;
     public static final int RIGHT_HATCH_SOLENOID_FORWARD = 4;
     public static final int RIGHT_HATCH_SOLENOID_REVERSE = 5;
-    public static final int INTAKE_MODE_TOGGLE_BUTTON = 14;
+    public static final int INTAKE_MODE_TOGGLE_BUTTON = 15;
     public static final int CARGO_BUTTON_PORT = 0;
 
     public static final int ELEVATOR_TALON_PORT = 6;
@@ -53,4 +54,19 @@ public class Constants {
     public static final int MID_CARGO_TARGET_AZIMUTH = -1;
     public static final int LEFT_CARGO_TARGET_AZIMUTH = -1;
     public static final int RIGHT_CARGO_TARGET_AZIMUTH = -1;
+    public static final int FLOOR_TARGET_AZIMUTH = -1;
+
+
+    public static final int CLIMBER_BACK_LEFT_SPARK_PORT = 7;
+    public static final int CLIMBER_BACK_RIGHT_SPARK_PORT = 8;
+    public static final int CLIMBER_FRONT_LEFT_SPARK_PORT = 9;
+    public static final int CLIMBER_FRONT_RIGHT_SPARK_PORT = 10;
+    public static final double EXTEND_SPEED = 0.3;
+    public static final int CLIMBER_TOP_BACK_LS = 3;
+    public static final int CLIMBER_TOP_FRONT_LS = 4;
+    public static final int CLIMBER_BOTTOM_BACK_LS = 5;
+    public static final int CLIMBER_BOTTOM_FRONT_LS = 6;
+    public static final int CLIMB_BOTTOM_WHEELS_TALON = 11;
+    public static final double CLIMBER_DRIVE_SPEED = 0.2;
+    public static final double HAB_DRIVE_SPEED = 0.3;
 }

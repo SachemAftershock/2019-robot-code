@@ -12,13 +12,12 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
-import edu.wpi.first.wpilibj.GenericHID.Hand;
 import frc.robot.Enums.IntakePosition;
 
 public class Intake extends Mechanism {
     private static Intake instance = new Intake();
     private TalonSRX leftArm, rightArm;
-    private CANSparkMax tiltMotor;
+    private CANSparkMax tiltSpark;
     private CANPIDController tiltPID;
     private DoubleSolenoid hatchPusher;
     private DigitalInput cargoButton;
@@ -32,8 +31,8 @@ public class Intake extends Mechanism {
         leftArm = new TalonSRX(Constants.LEFT_INTAKE_PORT);
         rightArm = new TalonSRX(Constants.RIGHT_INTAKE_PORT);
         leftArm.follow(rightArm);
-        tiltMotor = new CANSparkMax(Constants.TILT_MOTOR_PORT, MotorType.kBrushless);
-        tiltPID = new CANPIDController(tiltMotor);
+        tiltSpark = new CANSparkMax(Constants.TILT_MOTOR_PORT, MotorType.kBrushless);
+        tiltPID = new CANPIDController(tiltSpark);
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
 
         leftHatchPiston = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
@@ -78,23 +77,23 @@ public class Intake extends Mechanism {
         }
         if(cargoButton.get() || !controller.getBButton()) {
             rightArm.set(ControlMode.PercentOutput, 0);
-        } else if(controller.getAButton()) {
+        } if(controller.getAButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-        } else if(controller.getBButton()) {
+        } if(controller.getBButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
         } else {
             rightArm.set(ControlMode.PercentOutput, 0);
         }
         
-        if(controller.getXButton()) {
+        if(controller.getBButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.HATCH) {
             toggleHatchPush();
         }
-
-        if(controller.getBumper(Hand.kLeft)) {
+        
+        if(controller.getPOV() == 270) {
             changeIntakeMode(IntakePosition.HATCH);
-        } else if(controller.getBumper(Hand.kRight)) {
+        } else if(controller.getPOV() == 90) {
             changeIntakeMode(IntakePosition.CARGO);
-        } else if(controller.getXButton()) {
+        } else if(controller.getPOV() == 0) {
             changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
         }else {
         drive();
@@ -102,26 +101,32 @@ public class Intake extends Mechanism {
     }
 
     public void autoShootCargo() {
+        taskCompleted = false;
         for(int i=0;i<5;i++) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
             Timer.delay(0.2); //TODO: Adjust Time
         }
         rightArm.set(ControlMode.PercentOutput, 0);
+        taskCompleted = true;
     }
 
     public void autoCollectCargo() {
+        taskCompleted = false;
         for(int i=0;i<5;i++) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
             Timer.delay(0.2);
         }
         rightArm.set(ControlMode.PercentOutput, 0);
+        taskCompleted = true;
     }
 
     public void autoShoothHatch() {
+        taskCompleted = false;
         if(hatchPusher.get() == Value.kReverse)
             hatchPusher.set(Value.kForward);
         Timer.delay(2);
         hatchPusher.set(Value.kReverse);
+        taskCompleted = true;
     }
 
     public void toggleHatchPush() {
@@ -135,10 +140,51 @@ public class Intake extends Mechanism {
         hatchPistonsEngaged = !hatchPistonsEngaged;
     }
     public void changeIntakeMode(IntakePosition targetPos) {
+        taskCompleted = false;
         tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
+        taskCompleted = true;
     }
     
     public static Intake getInstance() {
         return instance;
+    }
+
+    public void onDemandTest() {
+        double prevEncoderCount = tiltSpark.getEncoder().getPosition();
+        rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
+        Timer.delay(2);
+        rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
+        Timer.delay(2);
+        rightArm.set(ControlMode.PercentOutput, 0.0);
+        changeIntakeMode(IntakePosition.CARGO);
+        Timer.delay(5);
+        if(Math.abs(prevEncoderCount - tiltSpark.getEncoder().getPosition()) < 10) {
+            System.out.println("INTAKE TILT ERROR");
+            System.out.println("   DIFF:" + tiltSpark.getEncoder().getPosition());
+        }
+        prevEncoderCount = tiltSpark.getEncoder().getPosition();
+        changeIntakeMode(IntakePosition.HATCH);
+        Timer.delay(5);
+        if(Math.abs(prevEncoderCount - tiltSpark.getEncoder().getPosition()) < 10) {
+            System.out.println("INTAKE TILT ERROR");
+            System.out.println("   DIFF:" + tiltSpark.getEncoder().getPosition());
+        }
+        prevEncoderCount = tiltSpark.getEncoder().getPosition();
+        changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
+        Timer.delay(5);
+        if(Math.abs(prevEncoderCount - tiltSpark.getEncoder().getPosition()) < 10) {
+            System.out.println("INTAKE TILT ERROR");
+            System.out.println("   DIFF:" + tiltSpark.getEncoder().getPosition());
+        }
+        prevEncoderCount = tiltSpark.getEncoder().getPosition();
+        changeIntakeMode(IntakePosition.HATCH);
+        Timer.delay(5);
+        if(Math.abs(prevEncoderCount - tiltSpark.getEncoder().getPosition()) < 10) {
+            System.out.println("INTAKE TILT ERROR");
+            System.out.println("   DIFF:" + tiltSpark.getEncoder().getPosition());
+        }
+        toggleHatchPush();
+        Timer.delay(5);
+        toggleHatchPush();
     }
 }

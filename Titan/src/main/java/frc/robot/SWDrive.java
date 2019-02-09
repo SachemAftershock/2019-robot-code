@@ -7,8 +7,10 @@ import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.XboxController; 
 
@@ -88,22 +90,10 @@ class SWDrive extends Mechanism {
         if(controller.getBackButtonReleased()) {
             setpointReached = true;
             super.flush();
+            Climber.getInstance().flush();
+        } if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
+            Climber.getInstance().startClimberSequence();
         }
-
-        // Correct tilt if abs(tilt) > tiltThresh
-		// Map to 10-40% output
-        //TODO: Check if this works
-		// TODO: check if this should be absolute valued
-		// - i remember it working in gym but logically seems incorrect
-		// - should only the comparison be absolute valued?
-		float pitch = navx.getPitch();
-		if (antiTiltEnabled && Math.abs(pitch) > Constants.TILT_THRESHOLD && Math.abs(pitch) < 45) {
-			double slope = (0.4 - 0.1) / (45 - Constants.TILT_THRESHOLD);
-			double correctionOffset = slope * (pitch - Constants.TILT_THRESHOLD);
-			double[] tmp = { -controller.getY(Hand.kLeft) + correctionOffset, controller.getX(Hand.kRight) + correctionOffset };
-			Utilities.normalize(tmp);
-            driveMotors(tmp);
-		}
 
         if(!setpointReached || super.size() > 0) {
             if(target == null || setpointReached) {
@@ -139,10 +129,14 @@ class SWDrive extends Mechanism {
 
         if(controller.getStartButtonReleased()) {
             tankEnabled = !tankEnabled;
-        } 
-        if(controller.getBackButton()) { //TODO:Change Button
+        } if(controller.getYButtonReleased()) {
             antiTiltEnabled = !antiTiltEnabled;
-        }
+            controller.setRumble(RumbleType.kLeftRumble, 1.0);
+            controller.setRumble(RumbleType.kRightRumble, 1.0);
+            Timer.delay(1.0);
+            controller.setRumble(RumbleType.kLeftRumble, 0.0);
+            controller.setRumble(RumbleType.kRightRumble, 0.0);
+        } 
 
         rotateSet = controller.getPOV() >= 0;
     }
@@ -179,6 +173,13 @@ class SWDrive extends Mechanism {
         rightMaster.setSelectedSensorPosition(0, 0, 0);
     }
 
+    //This is a really bad way to keep the wheels turning while climbing
+    //I'll fix this later I swear - S
+    public void driveForClimbSequence() {
+        antiTiltEnabled = false;
+        driveMotors(Constants.HAB_DRIVE_SPEED, Constants.HAB_DRIVE_SPEED);
+    }
+
     private void tankDrive() {
         
         double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
@@ -209,7 +210,78 @@ class SWDrive extends Mechanism {
     }
 
     private void driveMotors(double leftSpeed, double rightSpeed) {
+        float pitch = navx.getPitch();
+		if (antiTiltEnabled && Math.abs(pitch) > Constants.TILT_EPSILON && Math.abs(pitch) < 45) {
+			double slope = (0.4 - 0.1) / (45 - Constants.TILT_EPSILON);
+			double correctionOffset = slope * (pitch - Constants.TILT_EPSILON);
+			double[] tmp = { leftSpeed + correctionOffset, leftSpeed + correctionOffset };
+			Utilities.normalize(tmp);
+			leftSpeed = tmp[0];
+			rightSpeed = tmp[1];
+        }
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
+    
+    private double getEncoderDiff() {
+        return Math.abs(leftMaster.getSelectedSensorPosition(0) - rightMaster.getSelectedSensorPosition(0));
+    }
+
+    public boolean onDemandTest() {
+        double prevLeftEncoderCount = leftMaster.getSelectedSensorPosition(0);
+        double prevRightEncoderCount = rightMaster.getSelectedSensorPosition(0);
+        boolean leftHealthy = true, rightHealthy = true;
+        driveMotors(0.1, 0.1);
+        Timer.delay(3);
+        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) < 10) {
+            System.out.println("LEFT MASTER ENCODER ERROR: \n  NOT UPDATING FORWARD");
+            System.out.println("    DIFF:" + Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)));
+            leftHealthy = false;
+        } 
+        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) < 10) {
+            System.out.println("RIGHT MASTER ENCODER ERROR: \n  NOT UPDATING FORWARD");
+            System.out.println("    DIFF:" + Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)));
+            rightHealthy = false;
+        }
+        if(getEncoderDiff() > 0.1 * Math.max(Math.abs(leftMaster.getSelectedSensorPosition(0)), Math.abs(rightMaster.getSelectedSensorPosition(0)))) {
+            System.out.println("DRIVEBASE SIDE DIFFERENCE: \n  DIFFERENCE BETWEEN SIDES FORWARD");
+            System.out.println("   DIFF:" + getEncoderDiff());
+            rightHealthy = false;
+            leftHealthy = false;
+        }
+        driveMotors(-0.1, -0.1);
+        Timer.delay(3);
+        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) < 10) {
+            System.out.println("LEFT MASTER ENCODER ERROR: \n  NOT UPDATING REVERSE");
+            System.out.println("    DIFF:" + getEncoderDiff());
+            leftHealthy = false;
+        } 
+        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) < 10) {
+            System.out.println("RIGHT MASTER ENCODER ERROR: \n  NOT UPDATING REVERSE");
+            System.out.println("    DIFF:" + getEncoderDiff());
+            rightHealthy = false;
+        }
+        if(getEncoderDiff() > 0.1 * Math.max(Math.abs(leftMaster.getSelectedSensorPosition(0)), Math.abs(rightMaster.getSelectedSensorPosition(0)))) {
+            System.out.println("DRIVEBASE SIDE DIFFERENCE: \n  DIFFERENCE BETWEEN SIDES REVERSE");
+            System.out.println("   DIFF:" + getEncoderDiff());
+            rightHealthy = false;
+            leftHealthy = false;
+        }
+        driveMotors(0, 0);
+        Timer.delay(3);
+        prevLeftEncoderCount = leftMaster.getSelectedSensorPosition(0);
+        prevRightEncoderCount = rightMaster.getSelectedSensorPosition(0);
+        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) != 0) {
+            System.out.println("LEFT MASTER ENCODER ERROR: \n  UPDATING WHEN OFF");
+            System.out.println("    DIFF:" + Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)));
+            leftHealthy = false;
+        } 
+        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) != 0) {
+            System.out.println("Right MASTER ENCODER ERROR: \n  UPDATING WHEN OFF");
+            System.out.println("    DIFF:" + Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)));
+            rightHealthy = false;
+        }
+        
+        return leftHealthy && rightHealthy;
+    }
 }

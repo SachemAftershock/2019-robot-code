@@ -7,7 +7,8 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.ElevatorCmd;
@@ -21,7 +22,7 @@ public class Elevator extends Mechanism {
     private ElevatorPosition targetPosition;
     private TalonSRX elevatorTalon;
     private DigitalInput topLS, bottomLS;
-    private GenericHID buttonBox;
+    private Joystick buttonBox;
     private LIDAR lidar;
     private int[] buttonID;
     private ElevatorPosition[] levels;
@@ -40,54 +41,54 @@ public class Elevator extends Mechanism {
     public Elevator() {
         super();
         intakeMode = IntakePosition.HATCH;
-        buttonBox = new XboxController(Constants.BUTTON_BOX_PORT);
+        buttonBox = new Joystick(Constants.BUTTON_BOX_PORT);
         lidar = new LIDAR(new DigitalInput(Constants.ELEVATOR_LIDAR_PORT));
         elevatorTalon = new TalonSRX(Constants.ELEVATOR_TALON_PORT);
         topLS = new DigitalInput(Constants.TOP_LS_PORT);
         bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
-        elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 0);
-        elevatorTalon.config_kP(0, Constants.ELEVATOR_GAINS[0], 0);
-        elevatorTalon.config_kI(0, Constants.ELEVATOR_GAINS[1], 0);
-        elevatorTalon.config_kD(0, Constants.ELEVATOR_GAINS[2], 0);
-        elevatorTalon.config_kF(0, Constants.ELEVATOR_GAINS[3], 0);
+        elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 1);
+        elevatorTalon.config_kP(1, Constants.ELEVATOR_GAINS[0], 0);
+        elevatorTalon.config_kI(1, Constants.ELEVATOR_GAINS[1], 0);
+        elevatorTalon.config_kD(1, Constants.ELEVATOR_GAINS[2], 0);
+        elevatorTalon.config_kF(1, Constants.ELEVATOR_GAINS[3], 0);
         elevatorTalon.setInverted(false);
         elevatorTalon.configMotionAcceleration(1000, 0);
         elevatorTalon.configMotionCruiseVelocity(5000, 0);
-        elevatorTalon.config_IntegralZone(0, 200, 0);
-        elevatorTalon.configClosedloopRamp(0, 256);
-        elevatorTalon.configOpenloopRamp(0, 256);
-        elevatorTalon.configAllowableClosedloopError(0, Constants.ENC_THRESHOLD, 0);
+        elevatorTalon.config_IntegralZone(1, 200, 0);
+        elevatorTalon.configClosedloopRamp(1, 256);
+        elevatorTalon.configOpenloopRamp(1, 256);
+        elevatorTalon.configAllowableClosedloopError(1, Constants.ENC_THRESHOLD, 0);
 
         encCount = 0;
         lidarValue = lidar.getDistanceCm();
         encoderHealthy = true;
         completeManualOverride = false;
         lsActive = true;
-        buttonID = new int[] {0, 1, 2, 3, 4, 5, 43, 7, 8, 9, 10, 11, 12, 13};
+        buttonID = new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
         levels = new ElevatorPosition[] {ElevatorPosition.FLOOR, ElevatorPosition.LOW, ElevatorPosition.MID, ElevatorPosition.HIGH};
-        //TODO: Give button 0 a correct mapping, don't know what it's supposed to do currently
-        elevatorMap.put(0, new ElevatorInfo(ElevatorPosition.LOW, 0));
 
-        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.LOW, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(2, new ElevatorInfo(ElevatorPosition.LOW, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(3, new ElevatorInfo(ElevatorPosition.LOW, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
-
-        elevatorMap.put(4, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(5, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(43, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
-
-        elevatorMap.put(7, new ElevatorInfo(ElevatorPosition.HIGH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(8, new ElevatorInfo(ElevatorPosition.HIGH, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(9, new ElevatorInfo(ElevatorPosition.HIGH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
-
-        elevatorMap.put(10, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, Constants.FLOOR_TARGET_AZIMUTH));
         
-        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, Constants.LOADING_STATION_TARGET_AZIMUTH));
+        elevatorMap.put(2, new ElevatorInfo(ElevatorPosition.LOW, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(3, new ElevatorInfo(ElevatorPosition.LOW, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(4, new ElevatorInfo(ElevatorPosition.LOW, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+
+        elevatorMap.put(5, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(6, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(7, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+
+        elevatorMap.put(8, new ElevatorInfo(ElevatorPosition.HIGH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(9, new ElevatorInfo(ElevatorPosition.HIGH, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(10, new ElevatorInfo(ElevatorPosition.HIGH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+
+        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
+        
+        elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, Constants.LOADING_STATION_TARGET_AZIMUTH));
     }
     public void drive() {
-        if(topLS.get()) { //TODO: Find out if the limit switch to be mounted will be at the absolute top
+        if(topLS.get()) {
             elevatorPosition = ElevatorPosition.HIGH;
             encCount = ElevatorPosition.HIGH.getTargetEncValue();
         } if(bottomLS.get()) {
@@ -124,7 +125,6 @@ public class Elevator extends Mechanism {
             }
         }
 
-        //TODO: Button Assignments
         if(buttonBox.getRawButton(Constants.INTAKE_MODE_TOGGLE_BUTTON)) {
             if(intakeMode == IntakePosition.HATCH) {
                 if(elevatorPosition == ElevatorPosition.HIGH) {
@@ -208,5 +208,37 @@ public class Elevator extends Mechanism {
     }
     public ElevatorPosition getElevatorPosition() {
         return elevatorPosition;
+    }
+
+    public boolean onDemandTest() {
+        double prevEncoderCount = elevatorTalon.getSelectedSensorPosition(1);
+        boolean encoderHealthy = true;
+        commandElevator(ElevatorPosition.FLOOR);
+        Timer.delay(7);
+        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
+            System.out.println("ELEVATOR ENCODER ERROR");
+            System.out.println("   DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
+            encoderHealthy = false;
+        }
+        commandElevator(ElevatorPosition.MID);
+        Timer.delay(7);
+        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
+            System.out.println("ELEVATOR ENCODER ERROR");
+            System.out.println("    DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
+            encoderHealthy = false;
+        }
+        commandElevator(ElevatorPosition.LOW);
+        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
+            System.out.println("ELEVATOR ENCODER ERROR");
+            System.out.println("    DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
+            encoderHealthy = false;
+        }
+        Timer.delay(4);
+        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) == 0) {
+            System.out.println("ELEVATOR ENCODER ERROR");
+            System.out.println("   DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
+            encoderHealthy = false;
+        }
+        return encoderHealthy;
     }
 }
