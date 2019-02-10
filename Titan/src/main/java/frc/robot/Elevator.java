@@ -32,7 +32,7 @@ public class Elevator extends Mechanism {
     private double lidarValue;
     private boolean lsActive;
 
-    Map<Integer, ElevatorInfo> elevatorMap;
+    private Map<Integer, ElevatorInfo> elevatorMap;
 
     public static Elevator getInstance() {
         return instance;
@@ -59,7 +59,7 @@ public class Elevator extends Mechanism {
         elevatorTalon.configOpenloopRamp(1, 256);
         elevatorTalon.configAllowableClosedloopError(1, Constants.ENC_THRESHOLD, 0);
 
-        encCount = 0;
+        encCount = elevatorTalon.getSelectedSensorPosition(1);
         lidarValue = lidar.getDistanceCm();
         encoderHealthy = true;
         completeManualOverride = false;
@@ -67,25 +67,25 @@ public class Elevator extends Mechanism {
         buttonID = new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
         levels = new ElevatorPosition[] {ElevatorPosition.FLOOR, ElevatorPosition.LOW, ElevatorPosition.MID, ElevatorPosition.HIGH};
 
-        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, Constants.FLOOR_TARGET_AZIMUTH));
+        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, null, Constants.FLOOR_TARGET_AZIMUTH));
         
-        elevatorMap.put(2, new ElevatorInfo(ElevatorPosition.LOW, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(3, new ElevatorInfo(ElevatorPosition.LOW, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(4, new ElevatorInfo(ElevatorPosition.LOW, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(2, new ElevatorInfo(ElevatorPosition.LOW, IntakePosition.HATCH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(3, new ElevatorInfo(ElevatorPosition.LOW, IntakePosition.CARGO, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(4, new ElevatorInfo(ElevatorPosition.LOW, IntakePosition.HATCH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
 
-        elevatorMap.put(5, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(6, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(7, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(5, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(6, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.CARGO, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(7, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
 
-        elevatorMap.put(8, new ElevatorInfo(ElevatorPosition.HIGH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(9, new ElevatorInfo(ElevatorPosition.HIGH, Constants.MID_ROCKET_TARGET_AZIMUTH));
-        elevatorMap.put(10, new ElevatorInfo(ElevatorPosition.HIGH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(8, new ElevatorInfo(ElevatorPosition.HIGH, IntakePosition.HATCH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(9, new ElevatorInfo(ElevatorPosition.HIGH, IntakePosition.TOP_ROCKET_TILT, Constants.MID_ROCKET_TARGET_AZIMUTH));
+        elevatorMap.put(10, new ElevatorInfo(ElevatorPosition.HIGH, IntakePosition.HATCH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
 
-        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, Constants.LEFT_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, Constants.MID_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, null, Constants.LEFT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, null, Constants.MID_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, null, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
         
-        elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, Constants.LOADING_STATION_TARGET_AZIMUTH));
+        elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, null, Constants.LOADING_STATION_TARGET_AZIMUTH));
     }
     public void drive() {
         if(topLS.get()) {
@@ -189,6 +189,8 @@ public class Elevator extends Mechanism {
 
     public void commandElevator(int buttonPressed) {
         super.push(new ElevatorCmd(elevatorMap.get(buttonPressed).getElevatorPosition(), elevatorMap.get(buttonPressed).getTargetAzimuth()));
+        if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null)
+            Intake.getInstance().changeIntakeMode(elevatorMap.get(buttonPressed).getTargetIntakePosition());
     }
 
     public boolean atTarget() {
