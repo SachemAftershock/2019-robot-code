@@ -147,9 +147,11 @@ public class Elevator extends Mechanism {
         lidarValue = lidar.getDistanceCm();
         if(controller.getBackButton()) {
             completeManualOverride = !completeManualOverride;
-        } if(controller.getStartButton()) {
+        } 
+        if(controller.getStartButton()) {
             super.flush();
         } 
+
         if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1) != 0) {
             if(topLS.get()) {
                 if(Utilities.deadband(controller.getY(Hand.kLeft), 0.1) <= 0) {
@@ -162,12 +164,14 @@ public class Elevator extends Mechanism {
             } else {
                 elevatorTalon.set(ControlMode.PercentOutput, Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
             }
-        } 
+        }
+
         else if(controller.getBumper(Hand.kLeft) && targetPosition != levels[levels.length]) {
             targetPosition = levels[elevatorPosition.ordinal() + 1];
         } else if(controller.getBumper(Hand.kRight) && targetPosition != levels[0]) {
             targetPosition = levels[elevatorPosition.ordinal() - 1];
-        } if(!completeManualOverride) {
+        } 
+        if(!completeManualOverride) {
             drive();
         }
         if(topLS.get() && lsActive && !completeManualOverride) {
@@ -176,7 +180,8 @@ public class Elevator extends Mechanism {
         } else if(bottomLS.get() && lsActive && !completeManualOverride) {
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             lsActive = false;
-        } if(!topLS.get() && !bottomLS.get()) {
+        } 
+        if(!topLS.get() && !bottomLS.get()) {
             lsActive = true;
         }
     }
@@ -207,6 +212,9 @@ public class Elevator extends Mechanism {
     }
     public IntakePosition getIntakePosition() {
         return intakeMode;
+    }
+    public void setIntakePosition(IntakePosition position) {
+        intakeMode = position;
     }
     public ElevatorPosition getElevatorPosition() {
         return elevatorPosition;

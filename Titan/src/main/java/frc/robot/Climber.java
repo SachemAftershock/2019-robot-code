@@ -8,7 +8,10 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Commands.ClimbCmd;
+import frc.robot.Commands.DriveCmd;
+import frc.robot.Commands.DriveCmd.Distance;
 import frc.robot.Enums.AutoObjective;
+import frc.robot.Enums.IntakePosition;
 
 
 public class Climber extends Mechanism {
@@ -17,7 +20,7 @@ public class Climber extends Mechanism {
     private TalonSRX climbWheelTalon;
     private DigitalInput topBackLS, topFrontLS, bottomBackLS, bottomFrontLS;
     private boolean setpointReached;
-    enum LegSet {FRONT,BACK};
+    enum Legs {FRONT, BACK, BOTH};
 
 
     public Climber() {
@@ -45,17 +48,23 @@ public class Climber extends Mechanism {
             }
         
             switch(target.getObjective()) {
-                case CLIMBEREXTEND:
-                    climbExtend();
+                case CLIMBEREXTENDBOTH:
+                    climbExtend(Legs.BOTH);
+                    break;
+                case CLIMBEREXTENDFRONTLEGS:
+                    climbExtend(Legs.FRONT);
+                    break;
+                case CLIMBEREXTENDBACKLEGS:
+                    climbExtend(Legs.BACK);
                     break;
                 case CLIMBERDRIVE:
                     climbDrive();
                     break;
                 case RETRACTFRONTLEG:
-                    retractLeg(LegSet.FRONT);
+                    retractLeg(Legs.FRONT);
                     break;
                 case RETRACTBACKLEG:
-                    retractLeg(LegSet.BACK);
+                    retractLeg(Legs.BACK);
                     break;
                 default:
                     break;
@@ -63,18 +72,24 @@ public class Climber extends Mechanism {
         }
     }
 
-    public void climbExtend() {
+    public void climbExtend(Legs legs) {
         setpointReached = false;
         if(!topBackLS.get() && !topFrontLS.get()) {
-            backMaster.set(Constants.EXTEND_SPEED);
-            frontMaster.set(Constants.EXTEND_SPEED);
+            if(legs == Legs.BACK)
+                backMaster.set(Constants.EXTEND_SPEED);
+            else if(legs == Legs.FRONT)
+                frontMaster.set(Constants.EXTEND_SPEED);
+            else if(legs == Legs.BOTH) {
+                backMaster.set(Constants.EXTEND_SPEED);
+                frontMaster.set(Constants.EXTEND_SPEED);
+            }
         } else {
             backMaster.set(0.0);
             frontMaster.set(0.0);
             setpointReached = true;
             return;
         }
-        climbExtend();
+        climbExtend(legs);
     }
 
     public void climbDrive() {
@@ -87,19 +102,30 @@ public class Climber extends Mechanism {
         setpointReached = true;
     }
 
-    public void retractLeg(LegSet legs) {
+    public void retractLeg(Legs legs) {
         setpointReached = false;
-        if(legs == LegSet.FRONT) {
+        if(legs == Legs.FRONT) {
             frontMaster.set(-Constants.EXTEND_SPEED);
             if(bottomFrontLS.get()) {
                 frontMaster.set(0.0);
                 setpointReached = true;
                 return;
             }
-        } else {
+        } else if (legs == Legs.BACK) {
             backMaster.set(-Constants.EXTEND_SPEED);
             if(bottomBackLS.get()) {
                 backMaster.set(0.0);
+                setpointReached = true;
+                return;
+            }
+        } else if(legs == Legs.BOTH) {
+            backMaster.set(-Constants.EXTEND_SPEED);
+            frontMaster.set(-Constants.EXTEND_SPEED);
+            if(bottomBackLS.get())
+                backMaster.set(0.0);
+            if(bottomFrontLS.get())
+                frontMaster.set(0.0);
+            if(bottomBackLS.get() && bottomFrontLS.get()) {
                 setpointReached = true;
                 return;
             }
@@ -113,12 +139,20 @@ public class Climber extends Mechanism {
     //in SW Drive to add to the command queue, super wack, I know
     public void startClimberSequence() {
         //Setpoint is unused, that's why it's -1
-        super.push(new ClimbCmd(AutoObjective.CLIMBEREXTEND, -1));
+        Intake.getInstance().changeIntakeMode(IntakePosition.HATCH);
+        super.push(new ClimbCmd(AutoObjective.CLIMBEREXTENDBOTH, -1));
         super.push(new ClimbCmd(AutoObjective.CLIMBERDRIVE, -1));
         super.push(new ClimbCmd(AutoObjective.RETRACTFRONTLEG, -1));
         SWDrive.getInstance().driveForClimbSequence();
         super.push(new ClimbCmd(AutoObjective.RETRACTFRONTLEG, -1));
         super.push(new ClimbCmd(AutoObjective.RETRACTBACKLEG, -1));
+    }
+    public void startDriveOffHabSequence() {
+        Intake.getInstance().changeIntakeMode(IntakePosition.HATCH);
+        SWDrive.getInstance().push(new DriveCmd(Distance.INCHES, Constants.HAB_DRIVE_OFF_DISTANCE));
+        super.push(new ClimbCmd(AutoObjective.CLIMBEREXTENDFRONTLEGS, -1));
+        SWDrive.getInstance().push(new DriveCmd(Distance.INCHES, Constants.HAB_DRIVE_OFF_DISTANCE));
+        super.push(new ClimbCmd(AutoObjective.RETRACTFRONTLEG, -1));
     }
 
     public static Climber getInstance() {

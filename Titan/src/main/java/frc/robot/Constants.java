@@ -69,4 +69,6 @@ public class Constants {
     public static final int CLIMB_BOTTOM_WHEELS_TALON = 11;
     public static final double CLIMBER_DRIVE_SPEED = 0.2;
     public static final double HAB_DRIVE_SPEED = 0.3;
+
+    public static final double HAB_DRIVE_OFF_DISTANCE = -1.0;
 }

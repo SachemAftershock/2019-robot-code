@@ -141,7 +141,9 @@ public class Intake extends Mechanism {
     }
     public void changeIntakeMode(IntakePosition targetPos) {
         taskCompleted = false;
-        tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
+        if(targetPos != Elevator.getInstance().getIntakePosition())
+            tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
+        Elevator.getInstance().setIntakePosition(targetPos);
         taskCompleted = true;
     }
     
