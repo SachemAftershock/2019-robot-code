@@ -64,7 +64,7 @@ int Elevator_LUT[] = {
 // TODO: at this time, there is no provision for the Teensy and RoboRIO to re-synchronize these 
 // last commanded value state, which would be preferred feedback from the RoboRIO.  Find a way 
 // for RoboRIO to communicate back to this HID device to drive these variables and the LEDs.
-int LastLevelButtonPressed = ArcadeButton3_RocketLowerMiddle;
+int LastLevelButtonPressed = ArcadeButton12_CargoFront;
 enum enumCargoHatchToggle { eHatch = 0, eCargo = 1 } lastCargoHatchToggle = eHatch;
 
 // Each elevator level button has one LED positioned underneath it.
