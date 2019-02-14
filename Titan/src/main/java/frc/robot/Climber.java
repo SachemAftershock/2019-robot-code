@@ -20,7 +20,15 @@ public class Climber extends Mechanism {
     private TalonSRX climbWheelTalon;
     private DigitalInput topBackLS, topFrontLS, bottomBackLS, bottomFrontLS;
     private boolean setpointReached;
+    private float relativeSpeedAdjust;
+    private DriveForwardState driveState;
+    private LegState legState;
+    private long startTime;
     enum Legs {FRONT, BACK, BOTH};
+    enum DriveForwardState {STARTTIMER, WAITFORTIMEREXPIRATION};
+    enum LegState {STARTLEGS, WAITFORLIMITS};
+
+    
 
 
     public Climber() {
@@ -39,14 +47,21 @@ public class Climber extends Mechanism {
         bottomBackLS = new DigitalInput(Constants.CLIMBER_BOTTOM_BACK_LS);
         bottomFrontLS = new DigitalInput(Constants.CLIMBER_BOTTOM_FRONT_LS);
         setpointReached = true;
-    }
 
+        driveState = DriveForwardState.STARTTIMER;
+        legState = LegState.STARTLEGS;
+
+        relativeSpeedAdjust = 0;
+        startTime = 0;
+    }
+    
     public void drive() {
         if(super.size() > 0 || !setpointReached) {
             if(target == null || setpointReached) {
                 target = super.pop();
+                relativeSpeedAdjust = 0;
             }
-        
+            
             switch(target.getObjective()) {
                 case CLIMBEREXTENDBOTH:
                     climbExtend(Legs.BOTH);
@@ -71,72 +86,122 @@ public class Climber extends Mechanism {
             }
         }
     }
-
+    //TODO: Manual Mode
     public void climbExtend(Legs legs) {
-        setpointReached = false;
-        if(!topBackLS.get() && !topFrontLS.get()) {
-            if(legs == Legs.BACK)
-                backMaster.set(Constants.EXTEND_SPEED);
-            else if(legs == Legs.FRONT)
-                frontMaster.set(Constants.EXTEND_SPEED);
-            else if(legs == Legs.BOTH) {
-                backMaster.set(Constants.EXTEND_SPEED);
-                frontMaster.set(Constants.EXTEND_SPEED);
-            }
-        } else {
-            backMaster.set(0.0);
-            frontMaster.set(0.0);
-            setpointReached = true;
-            return;
+        float thePitch = SWDrive.getInstance().getPitch();
+        if(Math.abs(thePitch) > Constants.PITCH_LIMIT) {
+            //TODO:Light Up Red LIGHT
         }
-        climbExtend(legs);
+        switch(legState) {
+            case STARTLEGS:
+                setpointReached = false;
+                if(legs == Legs.BACK){
+                    backMaster.set(Constants.EXTEND_SPEED);
+                } else if(legs == Legs.FRONT) {
+                    frontMaster.set(Constants.EXTEND_SPEED);
+                } else if (legs == Legs.BOTH) {
+                    relativeSpeedAdjust = thePitch * Constants.PITCH_TO_SPEED_MODIFIER;
+                    backMaster.set(Constants.EXTEND_SPEED + relativeSpeedAdjust);
+                    frontMaster.set(Constants.EXTEND_SPEED - relativeSpeedAdjust);
+                }
+                legState = LegState.WAITFORLIMITS;
+                break;
+
+            case WAITFORLIMITS:
+                if(legs == Legs.BACK) {
+                    if(topBackLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                } else if(legs == Legs.FRONT) {
+                    if(topFrontLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                } else if(legs == Legs.BOTH) {
+                    if(topBackLS.get()) {
+                        backMaster.set(0.0);
+                    }
+                    if(topFrontLS.get()) {
+                        frontMaster.set(0.0);
+                    }
+                    if(topBackLS.get() && topFrontLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                }
+                break;
+        }
     }
 
     public void climbDrive() {
-        setpointReached = false;
-        for(int i=0;i<5;i++) {
-            climbWheelTalon.set(ControlMode.PercentOutput, Constants.CLIMBER_DRIVE_SPEED);
-            Timer.delay(1);
+        switch(driveState) {
+            case STARTTIMER:
+                setpointReached = false;
+                climbWheelTalon.set(ControlMode.PercentOutput, Constants.CLIMBER_DRIVE_SPEED);
+                startTime = System.currentTimeMillis();
+                driveState = DriveForwardState.WAITFORTIMEREXPIRATION;
+                break;
+
+            case WAITFORTIMEREXPIRATION:
+                if(System.currentTimeMillis() - startTime >= 5000) {
+                    climbWheelTalon.set(ControlMode.PercentOutput, 0.0);
+                    driveState = DriveForwardState.STARTTIMER;
+                    setpointReached = true;
+                }
+                break;
         }
-        climbWheelTalon.set(ControlMode.PercentOutput, 0.0);
-        setpointReached = true;
     }
 
     public void retractLeg(Legs legs) {
-        setpointReached = false;
-        if(legs == Legs.FRONT) {
-            frontMaster.set(-Constants.EXTEND_SPEED);
-            if(bottomFrontLS.get()) {
-                frontMaster.set(0.0);
-                setpointReached = true;
-                return;
-            }
-        } else if (legs == Legs.BACK) {
-            backMaster.set(-Constants.EXTEND_SPEED);
-            if(bottomBackLS.get()) {
-                backMaster.set(0.0);
-                setpointReached = true;
-                return;
-            }
-        } else if(legs == Legs.BOTH) {
-            backMaster.set(-Constants.EXTEND_SPEED);
-            frontMaster.set(-Constants.EXTEND_SPEED);
-            if(bottomBackLS.get())
-                backMaster.set(0.0);
-            if(bottomFrontLS.get())
-                frontMaster.set(0.0);
-            if(bottomBackLS.get() && bottomFrontLS.get()) {
-                setpointReached = true;
-                return;
-            }
+        float thePitch = SWDrive.getInstance().getPitch();
+        if(Math.abs(thePitch) > Constants.PITCH_LIMIT) {
+            //TODO:Light Up Red LIGHT
         }
-        retractLeg(legs);
+        switch(legState) {
+            case STARTLEGS:
+                setpointReached = false;
+                if(legs == Legs.BACK){
+                    backMaster.set(-Constants.EXTEND_SPEED);
+                } else if(legs == Legs.FRONT) {
+                    frontMaster.set(-Constants.EXTEND_SPEED);
+                } else if (legs == Legs.BOTH) {
+                    relativeSpeedAdjust = thePitch * Constants.PITCH_TO_SPEED_MODIFIER;
+                    backMaster.set(-Constants.EXTEND_SPEED + relativeSpeedAdjust);
+                    frontMaster.set(-Constants.EXTEND_SPEED - relativeSpeedAdjust);
+                }
+                legState = LegState.WAITFORLIMITS;
+                break;
+
+            case WAITFORLIMITS:
+                if(legs == Legs.BACK) {
+                    if(bottomBackLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                } else if(legs == Legs.FRONT) {
+                    if(bottomFrontLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                } else if(legs == Legs.BOTH) {
+                    if(bottomBackLS.get()) {
+                        backMaster.set(0.0);
+                    }
+                    if(bottomFrontLS.get()) {
+                        frontMaster.set(0.0);
+                    }
+                    if(bottomBackLS.get() && bottomFrontLS.get()) {
+                        legState = LegState.STARTLEGS;
+                        setpointReached = true;
+                    }
+                }
+                break;
+        }
     }
 
 
-    //I don't feel like moving the XboxController to be a object in Robot
-    //and rewriting part of Rohan's drivebase, so this function will be called
-    //in SW Drive to add to the command queue, super wack, I know
+  
     public void startClimberSequence() {
         //Setpoint is unused, that's why it's -1
         Intake.getInstance().changeIntakeMode(IntakePosition.HATCH);
@@ -159,7 +224,7 @@ public class Climber extends Mechanism {
         return instance;
     }
 
-    public boolean onDemandTest() {
+    public void onDemandTest() {
         double prevFrontEncoderCount = frontMaster.getEncoder().getPosition();
         double prevBackEncoderCount = backMaster.getEncoder().getPosition();
         boolean frontHealthy = true, backHealthy = true;
@@ -198,6 +263,5 @@ public class Climber extends Mechanism {
             System.out.println("INTAKE TILT ERROR");
             System.out.println("   DIFF:" + backMaster.getEncoder().getPosition());
         }
-        return frontHealthy && backHealthy;
     }
 }

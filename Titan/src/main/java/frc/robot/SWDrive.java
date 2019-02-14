@@ -173,6 +173,10 @@ class SWDrive extends Mechanism {
         rightMaster.setSelectedSensorPosition(0, 0, 0);
     }
 
+    public float getPitch() {
+        return navx.getPitch();
+    }
+
     //This is a really bad way to keep the wheels turning while climbing
     //I'll fix this later I swear - S
     public void driveForClimbSequence() {

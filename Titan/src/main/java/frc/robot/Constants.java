@@ -54,8 +54,6 @@ public class Constants {
     public static final int MID_CARGO_TARGET_AZIMUTH = -1;
     public static final int LEFT_CARGO_TARGET_AZIMUTH = -1;
     public static final int RIGHT_CARGO_TARGET_AZIMUTH = -1;
-    public static final int FLOOR_TARGET_AZIMUTH = -1;
-
 
     public static final int CLIMBER_BACK_LEFT_SPARK_PORT = 7;
     public static final int CLIMBER_BACK_RIGHT_SPARK_PORT = 8;
@@ -69,6 +67,7 @@ public class Constants {
     public static final int CLIMB_BOTTOM_WHEELS_TALON = 11;
     public static final double CLIMBER_DRIVE_SPEED = 0.2;
     public static final double HAB_DRIVE_SPEED = 0.3;
-
+    public static final float PITCH_LIMIT = 35;
+    public static final float PITCH_TO_SPEED_MODIFIER = (float) 0.333333;
     public static final double HAB_DRIVE_OFF_DISTANCE = -1.0;
 }

@@ -64,20 +64,8 @@ public class Robot extends TimedRobot {
   public void testPeriodic() {
     commonPeriodic();
     if(sDriver.getStartButton() && sDriver.getBackButton()) {
-      if(!driveBase.onDemandTest()) { 
         //TODO: Probably Turn on LEDs in Error Mode
-        //FOR ALL OF THESE
-      }
-      Timer.delay(20);
-      intake.onDemandTest();
-      Timer.delay(20);
-      if(!elevator.onDemandTest()) {
-
-      }
-      Timer.delay(20);
-      if(Utilities.deadband(sDriver.getTriggerAxis(Hand.kLeft), 0.1) > 0) {
-        climber.onDemandTest();
-      }
+        //TODO: Use Dashboard or something to Process BIT
     }
   }
 }

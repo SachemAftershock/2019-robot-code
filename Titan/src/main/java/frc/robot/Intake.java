@@ -4,24 +4,24 @@ import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.revrobotics.CANPIDController;
 import com.revrobotics.CANSparkMax;
-import com.revrobotics.ControlType;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import com.revrobotics.ControlType;
 
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import frc.robot.Enums.IntakePosition;
 
 public class Intake extends Mechanism {
     private static Intake instance = new Intake();
+    private Elevator elevator = Elevator.getInstance();
     private TalonSRX leftArm, rightArm;
     private CANSparkMax tiltSpark;
     private CANPIDController tiltPID;
-    private DoubleSolenoid hatchPusher;
     private DigitalInput cargoButton;
-    private DoubleSolenoid leftHatchPiston, rightHatchPiston;
+    private DoubleSolenoid leftHatchPistons, rightHatchPistons;
 
     private boolean taskCompleted;
     private boolean hatchPistonsEngaged;
@@ -35,8 +35,8 @@ public class Intake extends Mechanism {
         tiltPID = new CANPIDController(tiltSpark);
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
 
-        leftHatchPiston = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
-        rightHatchPiston = new DoubleSolenoid(Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
+        leftHatchPistons = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
+        rightHatchPistons = new DoubleSolenoid(Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
 
         taskCompleted = true;
         hatchPistonsEngaged = false;
@@ -56,6 +56,15 @@ public class Intake extends Mechanism {
             }
 
             switch(target.getObjective()) {
+                case TILTCARGO:
+                    changeIntakeMode(IntakePosition.CARGO);
+                    break;
+                case TILTHATCH:
+                    changeIntakeMode(IntakePosition.HATCH);
+                    break;
+                case TILTTOPROCKET:
+                    changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
+                    break;
                 case SHOOTCARGO:
                     autoShootCargo();
                     break;
@@ -75,29 +84,24 @@ public class Intake extends Mechanism {
         if(controller.getStartButton()) {
             super.flush();
         }
-        if(cargoButton.get() || !controller.getBButton()) {
+        if(cargoButton.get() && !controller.getBButton()) {
             rightArm.set(ControlMode.PercentOutput, 0);
-        } if(controller.getAButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO) {
+        } 
+        if(controller.getAButton() && elevator.getIntakePosition() == IntakePosition.CARGO || elevator.getIntakePosition() == IntakePosition.TOP_ROCKET_TILT) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-        } if(controller.getBButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO) {
+        } 
+        if(controller.getBButton() && elevator.getIntakePosition() == IntakePosition.CARGO || elevator.getIntakePosition() == IntakePosition.TOP_ROCKET_TILT) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
-        } else {
+        } 
+        else {
             rightArm.set(ControlMode.PercentOutput, 0);
         }
         
-        if(controller.getBButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.HATCH) {
+        if(controller.getBButtonReleased() && elevator.getIntakePosition() == IntakePosition.HATCH) {
             toggleHatchPush();
         }
         
-        if(controller.getPOV() == 270) {
-            changeIntakeMode(IntakePosition.HATCH);
-        } else if(controller.getPOV() == 90) {
-            changeIntakeMode(IntakePosition.CARGO);
-        } else if(controller.getPOV() == 0) {
-            changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
-        }else {
         drive();
-        }
     }
 
     public void autoShootCargo() {
@@ -122,28 +126,31 @@ public class Intake extends Mechanism {
 
     public void autoShoothHatch() {
         taskCompleted = false;
-        if(hatchPusher.get() == Value.kReverse)
-            hatchPusher.set(Value.kForward);
-        Timer.delay(2);
-        hatchPusher.set(Value.kReverse);
+        if(rightHatchPistons.get() == Value.kReverse) {
+            rightHatchPistons.set(Value.kForward);
+            leftHatchPistons.set(Value.kForward);
+        }
+        Timer.delay(0.1); //TODO: Find out if this delay is necessary
+        rightHatchPistons.set(Value.kReverse);
+        leftHatchPistons.set(Value.kReverse);
         taskCompleted = true;
     }
 
     public void toggleHatchPush() {
         if(hatchPistonsEngaged) {
-            leftHatchPiston.set(Value.kReverse);
-            rightHatchPiston.set(Value.kReverse);
+            leftHatchPistons.set(Value.kReverse);
+            rightHatchPistons.set(Value.kReverse);
         } else if(!hatchPistonsEngaged) {
-            leftHatchPiston.set(Value.kForward);
-            rightHatchPiston.set(Value.kForward);
+            leftHatchPistons.set(Value.kForward);
+            rightHatchPistons.set(Value.kForward);
         }
         hatchPistonsEngaged = !hatchPistonsEngaged;
     }
     public void changeIntakeMode(IntakePosition targetPos) {
         taskCompleted = false;
-        if(targetPos != Elevator.getInstance().getIntakePosition())
+        if(targetPos != elevator.getIntakePosition())
             tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
-        Elevator.getInstance().setIntakePosition(targetPos);
+        elevator.setIntakePosition(targetPos);
         taskCompleted = true;
     }
     
