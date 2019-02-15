@@ -38,13 +38,15 @@ public class Constants {
     public static final int RIGHT_HATCH_SOLENOID_REVERSE = 5;
     public static final int INTAKE_MODE_TOGGLE_BUTTON = 15;
     public static final int CARGO_BUTTON_PORT = 0;
+    public static final int INTAKE_TILT_ENC_THRESHOLD = 15;
 
     public static final int ELEVATOR_TALON_PORT = 6;
     public static final int ELEVATOR_LIDAR_PORT = 3;
     public static final int TOP_LS_PORT = 1;
     public static final int BOTTOM_LS_PORT = 2;
-    public static final double[] ELEVATOR_GAINS = {0.0, 0.0, 0.0, 0.0};
-    public static final int ENC_THRESHOLD = 75;
+    public static final double[] HATCH_ELEVATOR_GAINS = {0.0, 0.0, 0.0, 0.0};
+    public static final double[] CARGO_ELEVATOR_GAINS = {0.0, 0.0, 0.0, 0.0};
+    public static final int ELEVATOR_ENC_THRESHOLD = 75;
     public static final double LIDAR_THRESHOLD = -1;
 
     public static final int RIGHT_ROCKET_TARGET_AZIMUTH = -1;

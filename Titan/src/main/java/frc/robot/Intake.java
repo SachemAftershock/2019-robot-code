@@ -2,6 +2,7 @@ package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.revrobotics.CANEncoder;
 import com.revrobotics.CANPIDController;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
@@ -20,6 +21,7 @@ public class Intake extends Mechanism {
     private TalonSRX leftArm, rightArm;
     private CANSparkMax tiltSpark;
     private CANPIDController tiltPID;
+    private CANEncoder tiltEncoder;
     private DigitalInput cargoButton;
     private DoubleSolenoid leftHatchPistons, rightHatchPistons;
 
@@ -33,6 +35,7 @@ public class Intake extends Mechanism {
         leftArm.follow(rightArm);
         tiltSpark = new CANSparkMax(Constants.TILT_MOTOR_PORT, MotorType.kBrushless);
         tiltPID = new CANPIDController(tiltSpark);
+        tiltEncoder = tiltSpark.getEncoder();
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
 
         leftHatchPistons = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
@@ -100,7 +103,7 @@ public class Intake extends Mechanism {
         if(controller.getBButtonReleased() && elevator.getIntakePosition() == IntakePosition.HATCH) {
             toggleHatchPush();
         }
-        
+
         drive();
     }
 
@@ -146,12 +149,24 @@ public class Intake extends Mechanism {
         }
         hatchPistonsEngaged = !hatchPistonsEngaged;
     }
-    public void changeIntakeMode(IntakePosition targetPos) {
+    public void changeIntakeMode(IntakePosition targetPosition) {
         taskCompleted = false;
-        if(targetPos != elevator.getIntakePosition())
-            tiltPID.setReference(targetPos.getTargetEncValue(), ControlType.kPosition);
-        elevator.setIntakePosition(targetPos);
-        taskCompleted = true;
+        if(targetPosition != elevator.getIntakePosition())
+            tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition);
+        elevator.setIntakePosition(targetPosition);
+        elevator.updateTalonPIDProfile();
+        if(atTarget(targetPosition)) {
+            taskCompleted = true;
+        }
+    }
+
+    private boolean atTarget(IntakePosition targePosition) {
+        return checkEncoderValueInRange(targePosition);
+    }
+
+    private boolean checkEncoderValueInRange(IntakePosition desiredPosition) {
+        return tiltEncoder.getPosition() >= desiredPosition.getTargetEncValue() - Constants.INTAKE_TILT_ENC_THRESHOLD &&
+            tiltEncoder.getPosition() <= desiredPosition.getTargetEncValue() + Constants.INTAKE_TILT_ENC_THRESHOLD;
     }
     
     public static Intake getInstance() {
