@@ -17,7 +17,6 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.ElevatorCmd;
 import frc.robot.Commands.IntakeCmd;
-import frc.robot.Enums.AutoObjective;
 import frc.robot.Enums.ElevatorPosition;
 import frc.robot.Enums.IntakePosition;
 
@@ -54,20 +53,35 @@ public class Elevator extends Mechanism {
         elevatorTalon = new TalonSRX(Constants.ELEVATOR_TALON_PORT);
         topLS = new DigitalInput(Constants.TOP_LS_PORT);
         bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
-        elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 1);
-        elevatorTalon.config_kP(1, Constants.ELEVATOR_GAINS[0], 0);
-        elevatorTalon.config_kI(1, Constants.ELEVATOR_GAINS[1], 0);
-        elevatorTalon.config_kD(1, Constants.ELEVATOR_GAINS[2], 0);
-        elevatorTalon.config_kF(1, Constants.ELEVATOR_GAINS[3], 0);
+        elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 0);
+        elevatorTalon.setNeutralMode(NeutralMode.Brake);
         elevatorTalon.setInverted(false);
         elevatorTalon.configMotionAcceleration(1000, 0);
         elevatorTalon.configMotionCruiseVelocity(5000, 0);
-        elevatorTalon.config_IntegralZone(1, 200, 0);
-        elevatorTalon.configClosedloopRamp(1, 256);
-        elevatorTalon.configOpenloopRamp(1, 256);
-        elevatorTalon.configAllowableClosedloopError(1, Constants.ENC_THRESHOLD, 0);
+        elevatorTalon.configClosedloopRamp(0, 256);
+        elevatorTalon.configOpenloopRamp(0, 256);
 
-        encCount = elevatorTalon.getSelectedSensorPosition(1);
+
+        elevatorTalon.config_kP(0, Constants.HATCH_ELEVATOR_GAINS[0], 0);
+        elevatorTalon.config_kI(0, Constants.HATCH_ELEVATOR_GAINS[1], 0);
+        elevatorTalon.config_kD(0, Constants.HATCH_ELEVATOR_GAINS[2], 0);
+        elevatorTalon.config_kF(0, Constants.HATCH_ELEVATOR_GAINS[3], 0); 
+        elevatorTalon.config_IntegralZone(0, 200, 0);
+        elevatorTalon.configAllowableClosedloopError(0, Constants.ELEVATOR_ENC_THRESHOLD, 0);//git doesnt like to work
+
+        elevatorTalon.config_kP(1, Constants.CARGO_ELEVATOR_GAINS[0], 0);
+        elevatorTalon.config_kI(1, Constants.CARGO_ELEVATOR_GAINS[1], 0);
+        elevatorTalon.config_kD(1, Constants.CARGO_ELEVATOR_GAINS[2], 0);
+        elevatorTalon.config_kF(1, Constants.CARGO_ELEVATOR_GAINS[3], 0);
+        elevatorTalon.config_IntegralZone(1, 200, 0);
+        elevatorTalon.configAllowableClosedloopError(1, Constants.ELEVATOR_ENC_THRESHOLD, 0);
+
+        elevatorTalon.configForwardLimitSwitchSource(LimitSwitchSource.FeedbackConnector,
+				LimitSwitchNormal.NormallyOpen, 0);
+		elevatorTalon.configReverseLimitSwitchSource(LimitSwitchSource.FeedbackConnector,
+				LimitSwitchNormal.NormallyOpen, 0);
+
+        previousEncoderCount = elevatorTalon.getSelectedSensorPosition(0);
         lidarValue = lidar.getDistanceCm();
         encoderHealthy = true;
         timeOfLastMotorCommand = 0;
@@ -111,6 +125,30 @@ public class Elevator extends Mechanism {
             elevatorTalon.set(ControlMode.PercentOutput, manualSpeedInput);
         }
 
+        if(controller.getBumper(Hand.kLeft) && targetPosition != levels[levels.length]) {
+            targetPosition = levels[elevatorPosition.ordinal() + 1];
+        } else if(controller.getBumper(Hand.kRight) && targetPosition != levels[0]) {
+            targetPosition = levels[elevatorPosition.ordinal() - 1];
+        } 
+        /*
+        if(controller.getXButton() && intakeMode == IntakePosition.CARGO) {
+            super.push(new ElevatorCmd(ElevatorPosition.FLOOR, -1));
+            super.push(new ElevatorCmd(ElevatorPosition.REST, -1));
+            super.push(new IntakeCmd(AutoObjective.TILTHATCH, -1));
+        } */
+
+
+        if(!completeManualOverride) {
+            drive();
+        }
+
+        checkEncoderHealth();
+        if(encoderHealthy) {
+            updateElevatorPosition();
+        }
+    }
+
+    public void drive() {
         for(int id : buttonID) {
             if(buttonBox.getRawButton(id)) {
                 super.flush(); //Only the button box adds to the elevator queue, this allows the driver to overwrite his last input
@@ -175,16 +213,49 @@ public class Elevator extends Mechanism {
         }
     }
 
-    public void commandElevator(int buttonPressed) {
+    private void updateElevatorQueue(int buttonPressed) {
         super.push(new ElevatorCmd(elevatorMap.get(buttonPressed).getElevatorPosition(), elevatorMap.get(buttonPressed).getTargetAzimuth()));
         if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null)
-            Intake.getInstance().changeIntakeMode(elevatorMap.get(buttonPressed).getTargetIntakePosition());
+            intake.push(new IntakeCmd(elevatorMap.get(buttonPressed).getTargetIntakePosition().getAutoObjective(elevatorMap.get(buttonPressed).getTargetIntakePosition()), -1));
+    }   
+
+    private boolean atTarget() {
+        if(encoderHealthy) {
+            return getEncDelta(elevatorPosition) <= Constants.ELEVATOR_ENC_THRESHOLD && getLidarDelta(elevatorPosition) <= Constants.LIDAR_THRESHOLD;
+        } else {
+            return getLidarDelta(elevatorPosition) <= Constants.LIDAR_THRESHOLD;
+        }
     }
 
-    public boolean atTarget() {
-        return elevatorPosition == targetPosition && 
-        encoderHealthy ? (getEncDelta(elevatorPosition) < Constants.ENC_THRESHOLD) && (getLidarDelta(elevatorPosition) < Constants.LIDAR_THRESHOLD)
-            : (getLidarDelta(elevatorPosition) < Constants.LIDAR_THRESHOLD);
+    public void updateTalonPIDProfile() {
+        if(intakeMode == IntakePosition.CARGO) {
+            elevatorTalon.selectProfileSlot(1, 0);
+        } else if(intakeMode == IntakePosition.HATCH) {
+            elevatorTalon.selectProfileSlot(0, 0);
+        }
+    }
+    
+    private void updateElevatorPosition() {
+        if(checkEncoderValueInRange(ElevatorPosition.HIGH)) {
+            elevatorPosition = ElevatorPosition.HIGH;
+        } else if(checkEncoderValueInRange(ElevatorPosition.MID)) {
+            elevatorPosition = ElevatorPosition.MID;
+        } else if(checkEncoderValueInRange(ElevatorPosition.LOW)) {
+            elevatorPosition = ElevatorPosition.LOW;
+        } else if(checkEncoderValueInRange(ElevatorPosition.FLOOR)) {
+            elevatorPosition = ElevatorPosition.FLOOR;
+        } else {
+            elevatorPosition = null;
+        }
+    }
+    private void checkEncoderHealth() {
+        if (System.currentTimeMillis() - timeOfLastMotorCommand < 5000 && Math.abs(previousEncoderCount - elevatorTalon.getSelectedSensorPosition(0)) < 10 && encoderHealthy) {
+            encoderHealthy = false;
+            DriverStation.reportWarning("ENCODER NOT HEALTHY, ENTERING FAILSAFE MODE: " + timeOfLastMotorCommand + " " + atTarget() + " " + previousEncoderCount + " " + elevatorTalon.getSelectedSensorPosition(0), false);
+        }
+    }
+    private boolean checkEncoderValueInRange(ElevatorPosition positionToCheck) {
+        return elevatorTalon.getSelectedSensorPosition(0) >= positionToCheck.getTargetEncValue() - Constants.ELEVATOR_ENC_THRESHOLD && elevatorTalon.getSelectedSensorPosition(0) <= positionToCheck.getTargetEncValue();
     }
 
     private int getEncDelta(ElevatorPosition position) {
