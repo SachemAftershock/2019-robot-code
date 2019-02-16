@@ -1,41 +1,50 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Compressor;
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+
 import edu.wpi.first.wpilibj.TimedRobot;
-import frc.robot.Limelight.CameraMode;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 public class Robot extends TimedRobot {
 
-  SWDrive driveBase;
-  Compressor compressor;
+  //SWDrive driveBase;
+  CANSparkMax spark;
+  XboxController controller;
+  //Compressor compressor;
 
-  @Override
+  @Override 
   public void robotInit() {
-    driveBase = SWDrive.getInstance();
-
-    compressor = new Compressor();
-    compressor.start();
-    compressor.setClosedLoopControl(true);
+    //driveBase = SWDrive.getInstance();
+    spark = new CANSparkMax(9, MotorType.kBrushless);
+    controller = new XboxController(0);
+    //compressor = new Compressor();
+    //compressor.start();
+    //compressor.setClosedLoopControl(true);
   }
 
   @Override
   public void autonomousInit() {
-    Limelight.setCameraMode(CameraMode.eVision);
-    driveBase.zero();
+    //Limelight.setCameraMode(CameraMode.eVision);
+    //driveBase.zero();
   }
-
+ 
   @Override
   public void autonomousPeriodic() {
   }
 
   @Override
   public void teleopInit() {
-    driveBase.zero(); //TODO: remove after testing
+    //driveBase.zero(); //TODO: remove after testing
   }
 
   @Override
   public void teleopPeriodic() {
-    driveBase.drive();
+    spark.set(Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
+    System.out.println(spark.getEncoder().getPosition());
+    //driveBase.drive();
+
   }
 
   @Override
