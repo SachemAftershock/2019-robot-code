@@ -17,13 +17,15 @@ import frc.robot.Enums.IntakePosition;
 
 public class Intake extends Mechanism {
     private static Intake instance = new Intake();
-    private Elevator elevator = Elevator.getInstance();
     private TalonSRX leftArm, rightArm;
     private CANSparkMax tiltSpark;
     private CANPIDController tiltPID;
     private CANEncoder tiltEncoder;
     private DigitalInput cargoButton;
     private DoubleSolenoid leftHatchPistons, rightHatchPistons;
+    private Mode autoMode;
+    private enum Mode {SETUP, WAITUNTILFINISHED};
+    private long startTime;
 
     private boolean taskCompleted;
     private boolean hatchPistonsEngaged;
@@ -43,6 +45,10 @@ public class Intake extends Mechanism {
 
         taskCompleted = true;
         hatchPistonsEngaged = false;
+        autoMode = Mode.SETUP;
+        startTime = 0;
+
+        leftArm.setInverted(true);
 
         tiltPID.setP(Constants.TILT_GAINS[0]);
         tiltPID.setI(Constants.TILT_GAINS[1]);
@@ -90,78 +96,101 @@ public class Intake extends Mechanism {
         if(cargoButton.get() && !controller.getBButton()) {
             rightArm.set(ControlMode.PercentOutput, 0);
         } 
-        if(controller.getAButton() && elevator.getIntakePosition() == IntakePosition.CARGO || elevator.getIntakePosition() == IntakePosition.TOP_ROCKET_TILT) {
+        if(controller.getAButton() && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-        } 
-        if(controller.getBButton() && elevator.getIntakePosition() == IntakePosition.CARGO || elevator.getIntakePosition() == IntakePosition.TOP_ROCKET_TILT) {
+        } else if(controller.getBButton() && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
         } 
         else {
             rightArm.set(ControlMode.PercentOutput, 0);
         }
-        
-        if(controller.getBButtonReleased() && elevator.getIntakePosition() == IntakePosition.HATCH) {
-            toggleHatchPush();
+        //TODO: Double Check this below
+        if(controller.getBButton() && Elevator.getInstance().getIntakePosition() == IntakePosition.HATCH) {
+            leftHatchPistons.set(Value.kForward);
+            rightHatchPistons.set(Value.kForward);
+            System.out.println("Pistons Engaged");
+            hatchPistonsEngaged = false;
+        } else {
+            if(hatchPistonsEngaged) {
+                leftHatchPistons.set(Value.kReverse);
+                rightHatchPistons.set(Value.kReverse);
+                System.out.println("Pistons Reversed");
+                hatchPistonsEngaged = true;
+            }
         }
 
         drive();
     }
-
+    //TODO: Make this non blocking
     public void autoShootCargo() {
-        taskCompleted = false;
-        for(int i=0;i<5;i++) {
-            rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-            Timer.delay(0.2); //TODO: Adjust Time
+        switch(autoMode) {
+            case SETUP:
+                taskCompleted = false;
+                startTime = System.currentTimeMillis();
+                rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
+                autoMode = Mode.WAITUNTILFINISHED;
+                break;
+            case WAITUNTILFINISHED:
+                if(System.currentTimeMillis() - startTime >= 5000) {
+                    rightArm.set(ControlMode.PercentOutput, 0.0);
+                    autoMode = Mode.SETUP;
+                    taskCompleted = true;
+                }
+                break;
         }
-        rightArm.set(ControlMode.PercentOutput, 0);
-        taskCompleted = true;
     }
 
     public void autoCollectCargo() {
-        taskCompleted = false;
-        for(int i=0;i<5;i++) {
-            rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-            Timer.delay(0.2);
+        switch(autoMode) {
+            case SETUP:
+                taskCompleted = false;
+                startTime = System.currentTimeMillis();
+                rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
+                autoMode = Mode.WAITUNTILFINISHED;
+                break;
+            case WAITUNTILFINISHED:
+                if(System.currentTimeMillis() - startTime >= 5000) {
+                    rightArm.set(ControlMode.PercentOutput, 0.0);
+                    autoMode = Mode.SETUP;
+                    taskCompleted = true;
+                }
+                break;
         }
-        rightArm.set(ControlMode.PercentOutput, 0);
-        taskCompleted = true;
     }
 
     public void autoShoothHatch() {
-        taskCompleted = false;
-        if(rightHatchPistons.get() == Value.kReverse) {
-            rightHatchPistons.set(Value.kForward);
-            leftHatchPistons.set(Value.kForward);
+        switch(autoMode) {
+            case SETUP:
+                taskCompleted = false;
+                startTime = System.currentTimeMillis();
+                //leftHatchPistons.set(Value.kForward);
+                //rightHatchPistons.set(Value.kForward);
+                autoMode = Mode.WAITUNTILFINISHED;
+                break;
+            case WAITUNTILFINISHED:
+                if(System.currentTimeMillis() - startTime >= 100) {
+                    //leftHatchPistons.set(Value.kReverse);
+                    //rightHatchPistons.set(Value.kReverse);
+                    autoMode = Mode.SETUP;
+                    taskCompleted = true;
+                }
+                break;
         }
-        Timer.delay(0.1); //TODO: Find out if this delay is necessary
-        rightHatchPistons.set(Value.kReverse);
-        leftHatchPistons.set(Value.kReverse);
-        taskCompleted = true;
     }
 
-    public void toggleHatchPush() {
-        if(hatchPistonsEngaged) {
-            leftHatchPistons.set(Value.kReverse);
-            rightHatchPistons.set(Value.kReverse);
-        } else if(!hatchPistonsEngaged) {
-            leftHatchPistons.set(Value.kForward);
-            rightHatchPistons.set(Value.kForward);
-        }
-        hatchPistonsEngaged = !hatchPistonsEngaged;
-    }
     public void changeIntakeMode(IntakePosition targetPosition) {
         taskCompleted = false;
-        if(targetPosition != elevator.getIntakePosition())
-            tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition);
-        elevator.setIntakePosition(targetPosition);
-        elevator.updateTalonPIDProfile();
+        if(targetPosition != Elevator.getInstance().getIntakePosition())
+            tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition); 
+        Elevator.getInstance().setIntakePosition(targetPosition);
+        Elevator.getInstance().updateTalonPIDProfile();
         if(atTarget(targetPosition)) {
             taskCompleted = true;
         }
     }
 
-    private boolean atTarget(IntakePosition targePosition) {
-        return checkEncoderValueInRange(targePosition);
+    private boolean atTarget(IntakePosition targetPosition) {
+        return checkEncoderValueInRange(targetPosition);
     }
 
     private boolean checkEncoderValueInRange(IntakePosition desiredPosition) {
@@ -170,6 +199,7 @@ public class Intake extends Mechanism {
     }
     
     public static Intake getInstance() {
+        System.out.println("-------Intake::getInstake");
         return instance;
     }
 
@@ -207,8 +237,5 @@ public class Intake extends Mechanism {
             System.out.println("INTAKE TILT ERROR");
             System.out.println("   DIFF:" + tiltSpark.getEncoder().getPosition());
         }
-        toggleHatchPush();
-        Timer.delay(5);
-        toggleHatchPush();
     }
 }

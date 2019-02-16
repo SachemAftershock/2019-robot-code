@@ -2,16 +2,15 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 public class Robot extends TimedRobot {
 
   SWDrive driveBase;
   Elevator elevator;
   Intake intake;
-  Climber climber;
+  //PistonClimber pistonClimber; //NOTE: Piston Climber is not used in this file; used in SWDrive
+  //Climber climber;
 
   Compressor compressor;
   XboxController sDriver;
@@ -21,7 +20,8 @@ public class Robot extends TimedRobot {
     driveBase = SWDrive.getInstance();
     intake = Intake.getInstance();
     elevator = Elevator.getInstance();
-    climber = Climber.getInstance();
+    //pistonClimber = PistonClimber.getInstance();
+    //climber = Climber.getInstance();
 
     sDriver = new XboxController(Constants.SECONDARY_DRIVER_PORT);
 

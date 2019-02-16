@@ -10,7 +10,6 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
-import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.XboxController; 
 
@@ -26,9 +25,12 @@ class SWDrive extends Mechanism {
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
+    //private PistonClimber climber;
 
     private SWDrive() {
         super();
+
+        //climber = PistonClimber.getInstance();
 
         leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
@@ -90,13 +92,13 @@ class SWDrive extends Mechanism {
         if(controller.getBackButtonReleased()) {
             setpointReached = true;
             super.flush();
-            Climber.getInstance().flush();
-        } if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
+           // Climber.getInstance().flush();
+        } /*if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
             Climber.getInstance().startClimberSequence();
-        }
+        } */
 
         if(!setpointReached || super.size() > 0) {
-            if(target == null || setpointReached) {
+            if(super.size() > 0 && (target == null || setpointReached)) {
                 target = super.pop();
             }
 
@@ -129,14 +131,16 @@ class SWDrive extends Mechanism {
 
         if(controller.getStartButtonReleased()) {
             tankEnabled = !tankEnabled;
-        } if(controller.getYButtonReleased()) {
-            antiTiltEnabled = !antiTiltEnabled;
-            controller.setRumble(RumbleType.kLeftRumble, 1.0);
-            controller.setRumble(RumbleType.kRightRumble, 1.0);
-            Timer.delay(1.0);
-            controller.setRumble(RumbleType.kLeftRumble, 0.0);
-            controller.setRumble(RumbleType.kRightRumble, 0.0);
         } 
+        if(controller.getYButtonReleased()) {
+            antiTiltEnabled = !antiTiltEnabled;
+        } 
+        /*if(controller.getBumper(Hand.kRight)) {
+            climber.toggleFrontPistons();
+        }
+        if(controller.getBumper(Hand.kLeft)) {
+            climber.toggleRearPiston();
+        } */
 
         rotateSet = controller.getPOV() >= 0;
     }
@@ -179,10 +183,10 @@ class SWDrive extends Mechanism {
 
     //This is a really bad way to keep the wheels turning while climbing
     //I'll fix this later I swear - S
-    public void driveForClimbSequence() {
+    /*public void driveForClimbSequence() {
         antiTiltEnabled = false;
         driveMotors(Constants.HAB_DRIVE_SPEED, Constants.HAB_DRIVE_SPEED);
-    }
+    } */
 
     private void tankDrive() {
         

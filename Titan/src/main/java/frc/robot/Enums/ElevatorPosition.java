@@ -3,7 +3,7 @@ package frc.robot.Enums;
 import frc.robot.Elevator;
 
 public enum ElevatorPosition {
-    FLOOR(0,0,0,0), REST(0,0,0,0), LOW(0,0,0,0), MID(0,0,0,0), HIGH(0,0,0,0);
+    FLOOR(0,0,0,0), LOW(0,0,0,0), MID(0,0,0,0), HIGH(0,0,0,0);
 
     private final int targetHatchEnc;
     private final int targetHatchLidar;
@@ -26,8 +26,6 @@ public enum ElevatorPosition {
     public AutoObjective getElevatorCmd(ElevatorPosition position) {
         if(position == LOW)
             return AutoObjective.ELEVATORLOW;
-        if(position == REST) 
-            return AutoObjective.ELEVATORREST;
         if(position == MID)
             return AutoObjective.ELEVATORMID;
         if(position == HIGH)
