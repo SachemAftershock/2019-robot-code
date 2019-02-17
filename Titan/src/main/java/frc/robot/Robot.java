@@ -1,6 +1,8 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Compressor;
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 
@@ -15,7 +17,7 @@ public class Robot extends TimedRobot {
   Compressor compressor;
   XboxController sDriver;
 
-  @Override
+  @Override 
   public void robotInit() {
     driveBase = SWDrive.getInstance();
     intake = Intake.getInstance();
@@ -32,9 +34,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    //Limelight.setCameraMode(CameraMode.eVision);
     driveBase.zero();
   }
-
+ 
   @Override
   public void autonomousPeriodic() {
     commonPeriodic();
@@ -42,7 +45,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    driveBase.zero(); //TODO: remove after testing
+    
   }
 
   @Override

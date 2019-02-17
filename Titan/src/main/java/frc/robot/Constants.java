@@ -77,4 +77,6 @@ public class Constants {
     public static final int CLIMBER_FRONT_PISTON_REVERSE_PORT = 9;
     public static final int CLIMBER_REAR_PISTON_FORWARD_PORT = 10;
     public static final int CLIMBER_REAR_PISTON_REVERSE_PORT =11; */
+    public static final double CARGO_SEARCH_ROTATE_SPEED = 0.5;
+    public static final double CARGO_SEARCH_EPSILON = 3;
 }
