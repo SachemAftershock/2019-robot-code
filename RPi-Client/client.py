@@ -1,15 +1,22 @@
+from StreamUtils import *
 import numpy as np
+import threading
 import base64
 import atexit
 import struct
 import socket
 import cv2
+import sys
 
 class Camera:
 	def __init__(self, index, width, height):
 		self.cam = cv2.VideoCapture(index)
+		self.width = width
+		self.height = height
+		self.index = index
 		self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 		self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+		atexit.register(self.release)
 
 	def get_frame(self):
 		ret, frame = self.cam.read()
@@ -21,76 +28,148 @@ class Camera:
 	def set_prop(self, prop, value):
 		self.cam.set(prop, value)
 
+	def set_res(self, width, height):
+		self.cam.release()
+		self.cam = cv2.VideoCapture(self.index)
+		self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+		self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
 	def release(self):
 		self.cam.release()
 
-class Communication:
-	def __init__(self, address, port):
+class ConfigClient:
+	def __init__(self, server_address = '10.2.63.5', server_port = 5807, packet_size = 1000):
 		self.comm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.comm_socket.bind(('', 0))
 		self.comm_socket.settimeout(1.0)
-		self.server = (address, port)
-		self.packet_size = 65000
+		self.server = (server_address, server_port)
+		self.packet_size = packet_size
+		self.cmd_string = ''
 
-	def compress(self, frame):
-		#return base64.b64encode(cv2.imencode('.jpg', frame)[1])
-		if frame is None:
-			return None
-		return cv2.imencode('.jpg', frame)[1].tostring()
-		
-	def itob(self, value):
-		return struct.pack('!i', value)
+		atexit.register(self.release)
 
-	def send_frame(self, frame):
-		compressed_frame = self.compress(frame)
-		if compressed_frame is None:
-			return
-			
-		length = self.itob(len(compressed_frame))
-		print(len(compressed_frame))
-		#streams = self.itob(len(frame))
-		#print('Client length:', length, len(compressed_frame))
-		self.comm_socket.sendto(length, self.server)
-		#self.comm_socket.sendto(streams, self.server)
+	def create_streamer(self):
+		ret = 1
+		while ret == 1:
+			ret = StreamUtils.send_packet(self.comm_socket, self.server, StreamUtils.compress_string('camera'), timeout_kill = True)
+		b_message, address = StreamUtils.recieve_packet(self.comm_socket)
+		message = StreamUtils.decompress_string(b_message)
+		items = message.split('|')
+		return ClientStreamer(address[0], int(items[0].split('#')[1]), int(items[1].split('#')[1]))
 
-		try:
-			data, server = self.comm_socket.recvfrom(1)
-			#print(data, 'recieved from', server)
-		except socket.timeout:
-			#print('timeout')
-			return
-		except KeyboardInterrupt:
-			return;
-
-		sent = 0
-		while sent < len(compressed_frame):
-			self.comm_socket.sendto(compressed_frame[sent:sent + self.packet_size], self.server)
-			sent += self.packet_size
+	def send_message(self):
+		StreamUtils.send_packet(self.comm_socket, self.server,  StreamUtils.compress_string(self.cmd_string))
 
 	def release(self):
 		self.comm_socket.close()
 
+class ClientStreamer:
+	def __init__(self, server_address, server_port, cam_index, packet_size = 1000, cap_width = 320, cap_height = 240):
+		#self.comm_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		#self.comm_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+		#self.comm_socket.connect((server_address, server_port))
+
+		self.comm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.comm_socket.bind(('', 0))
+		self.comm_socket.settimeout(1.0)
+		self.server = (server_address, server_port)
+		self.packet_size = packet_size
+		self.camera = Camera(cam_index, cap_width, cap_height)
+		self.cmd_string = 'width#%d|height#%d' % (cap_width, cap_height)
+		
+		atexit.register(self.release)
+		threading.Thread(target = self.streamer_thread).start()
+
+	def streamer_thread(self):
+
+		while True:
+			try:
+				'''
+				frame = self.camera.get_frame()
+				if frame is None:
+					continue
+
+				frame_bytes = StreamUtils.compress_frame(frame)
+				print(len(frame_bytes))
+				bframe_length = StreamUtils.itob(len(frame_bytes))
+				#frame_bytes = StreamUtils.compress_frame(frame)
+
+				self.comm_socket.sendall(StreamUtils.itob(263))
+				self.comm_socket.sendall(bframe_length)
+				self.comm_socket.sendall(frame_bytes)
+				'''
+
+				frame = self.camera.get_frame()
+				if frame is None:
+					continue
+
+				frame_bytes = StreamUtils.compress_frame(frame)
+				bframe_length = StreamUtils.itob(len(frame_bytes))
+
+				self.comm_socket.sendto(bframe_length, self.server)
+				sent = 0
+				while sent < len(frame_bytes):
+					self.comm_socket.sendto(frame_bytes[sent:sent + self.packet_size], self.server)
+					sent += self.packet_size
+
+
+				#self.comm_socket.sendto(self.p, self.server)
+				#frame_bytes = StreamUtils.compress_frame(frame)
+				#self.comm_socket.sendto(frame_bytes, self.server)
+				'''	
+				frame_bytes = StreamUtils.compress_frame(frame)
+				info_bytes = StreamUtils.compress_string(self.cmd_string)
+
+				bframe_length = StreamUtils.itob(len(frame_bytes))
+				self.comm_socket.sendto(bframe_length, self.server)
+
+				bserver_info_length, address = self.comm_socket.recvfrom(4)
+				server_info_length = StreamUtils.btoi(bserver_info_length)
+
+				binfo_length = StreamUtils.itob(len(info_bytes))
+				self.comm_socket.sendto(binfo_length, self.server)
+
+				bserver_info, address = self.comm_socket.recvfrom(server_info_length)
+				server_info = StreamUtils.decompress_string(bserver_info)
+
+				if len(server_info) > 0:
+					self.parse_commands(server_info.split('|'))
+
+				bpayload = info_bytes + frame_bytes
+				sent = 0
+				while sent < len(bpayload):
+					self.comm_socket.sendto(bpayload[sent:sent + self.packet_size], self.server)
+					sent += self.packet_size
+				'''
+			except Exception as e:
+				if str(e) == 'timed out':
+					pass
+				else:
+					StreamUtils.dbgprint('Exception caught in ClientStreamer::streamer_thread:', str(e))
+
+	def parse_commands(self, commands):
+		res = [640, 480]
+		for command in commands:
+			data = command.split('#')
+			if data[0] == 'width':
+				res[0] = int(data[1])
+				#self.camera.set_prop(cv2.CAP_PROP_FRAME_WIDTH, int(data[1]))
+			elif data[0] == 'height':
+				res[1] = int(data[1])
+				#self.camera.set_prop(cv2.CAP_PROP_FRAME_HEIGHT, int(data[1]))
+		self.camera.set_res(res[0], res[1])
+
+	def release(self):
+		self.comm_socket.close()
+
+
 def main():
-	cam = Camera(0, 320, 240)
-	cam1 = Camera(1, 320, 240)
-	cam2 = Camera(2, 320, 240)
-
-	comm = Communication('10.2.63.5', 5809)
-	comm1 = Communication('10.2.63.5', 5810)
-	comm2 = Communication('10.2.63.5', 5808)
-
-	atexit.register(cam.release)
-	atexit.register(comm.release)
-
-	atexit.register(cam1.release)
-	atexit.register(comm1.release)
-
-	atexit.register(cam2.release)
-	atexit.register(comm2.release)
+	config = ConfigClient()
+	streams = [config.create_streamer()]#[config.create_streamer(), config.create_streamer(), config.create_streamer(), config.create_streamer(), config.create_streamer()]
 
 	while True:
-		comm.send_frame(cam.get_frame())
-		comm1.send_frame(cam1.get_frame())
-		comm2.send_frame(cam2.get_frame())
+		config.send_message()
+	
 
 if __name__ == '__main__':
 	main()
