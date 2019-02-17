@@ -1,10 +1,11 @@
 package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
-import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.revrobotics.CANEncoder;
 import com.revrobotics.CANPIDController;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.ControlType;
 
@@ -17,7 +18,7 @@ import frc.robot.Enums.IntakePosition;
 
 public class Intake extends Mechanism {
     private static Intake instance = new Intake();
-    private TalonSRX leftArm, rightArm;
+    private VictorSPX leftArm, rightArm;
     private CANSparkMax tiltSpark;
     private CANPIDController tiltPID;
     private CANEncoder tiltEncoder;
@@ -32,16 +33,20 @@ public class Intake extends Mechanism {
 
     public Intake() {
         super();
-        leftArm = new TalonSRX(Constants.LEFT_INTAKE_PORT);
-        rightArm = new TalonSRX(Constants.RIGHT_INTAKE_PORT);
+        leftArm = new VictorSPX(Constants.LEFT_INTAKE_PORT);
+        rightArm = new VictorSPX(Constants.RIGHT_INTAKE_PORT);
         leftArm.follow(rightArm);
         tiltSpark = new CANSparkMax(Constants.TILT_MOTOR_PORT, MotorType.kBrushless);
         tiltPID = new CANPIDController(tiltSpark);
         tiltEncoder = tiltSpark.getEncoder();
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
+        tiltSpark.setIdleMode(IdleMode.kBrake);
 
-        leftHatchPistons = new DoubleSolenoid(Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
-        rightHatchPistons = new DoubleSolenoid(Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
+        leftHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
+        rightHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
+
+        //leftHatchPistons = new DoubleSolenoid(0,Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
+        //rightHatchPistons = new DoubleSolenoid(0,Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
 
         taskCompleted = true;
         hatchPistonsEngaged = false;
@@ -98,8 +103,10 @@ public class Intake extends Mechanism {
         } 
         if(controller.getAButton() && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
+            System.out.println("SET IN");
         } else if(controller.getBButton() && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
+            System.out.println("SET OUT");
         } 
         else {
             rightArm.set(ControlMode.PercentOutput, 0);
@@ -109,19 +116,18 @@ public class Intake extends Mechanism {
             leftHatchPistons.set(Value.kForward);
             rightHatchPistons.set(Value.kForward);
             System.out.println("Pistons Engaged");
-            hatchPistonsEngaged = false;
+            hatchPistonsEngaged = true;
         } else {
             if(hatchPistonsEngaged) {
                 leftHatchPistons.set(Value.kReverse);
                 rightHatchPistons.set(Value.kReverse);
                 System.out.println("Pistons Reversed");
-                hatchPistonsEngaged = true;
+                hatchPistonsEngaged = false;
             }
         }
-
         drive();
     }
-    //TODO: Make this non blocking
+    
     public void autoShootCargo() {
         switch(autoMode) {
             case SETUP:
@@ -163,14 +169,14 @@ public class Intake extends Mechanism {
             case SETUP:
                 taskCompleted = false;
                 startTime = System.currentTimeMillis();
-                //leftHatchPistons.set(Value.kForward);
-                //rightHatchPistons.set(Value.kForward);
+                leftHatchPistons.set(Value.kForward);
+                rightHatchPistons.set(Value.kForward);
                 autoMode = Mode.WAITUNTILFINISHED;
                 break;
             case WAITUNTILFINISHED:
                 if(System.currentTimeMillis() - startTime >= 100) {
-                    //leftHatchPistons.set(Value.kReverse);
-                    //rightHatchPistons.set(Value.kReverse);
+                    leftHatchPistons.set(Value.kReverse);
+                    rightHatchPistons.set(Value.kReverse);
                     autoMode = Mode.SETUP;
                     taskCompleted = true;
                 }
@@ -199,7 +205,6 @@ public class Intake extends Mechanism {
     }
     
     public static Intake getInstance() {
-        System.out.println("-------Intake::getInstake");
         return instance;
     }
 

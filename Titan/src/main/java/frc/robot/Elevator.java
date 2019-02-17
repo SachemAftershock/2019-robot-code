@@ -5,8 +5,6 @@ import java.util.Map;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
-import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
-import com.ctre.phoenix.motorcontrol.LimitSwitchSource;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
@@ -17,7 +15,6 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.ElevatorCmd;
-import frc.robot.Commands.IntakeCmd;
 import frc.robot.Enums.ElevatorPosition;
 import frc.robot.Enums.IntakePosition;
 
@@ -27,15 +24,14 @@ public class Elevator extends Mechanism {
     private IntakePosition intakeMode;
     private ElevatorPosition currentElevatorPosition, previousElevatorPosition, targetPosition;
     private TalonSRX elevatorTalon;
-    //private DigitalInput topLS, bottomLS; //TODO: Find out how the Phoenix Lib integrates the LS
+    private DigitalInput topLS, bottomLS; //TODO: Find out how the Phoenix Lib integrates the LS
     private Joystick buttonBox;
     private LIDAR lidar;
     private int[] buttonID;
-    private ElevatorPosition[] levels;
-    private boolean completeManualOverride, encoderHealthy, hatchModeEnabled;
+    private frc.robot.PIDController cargoPID, hatchPID;
+    private boolean completeManualOverride, encoderHealthy, hatchModeEnabled, topLSPressed, bottomLSPressed, lidarBias, firstTime, setpointReached;
     private int previousEncoderCount, idOfLastButtonPressed;
-    private double lidarValue;
-    private long timeOfLastMotorCommand;
+    private double lidarValue, manualSpeedInput;
 
     private Map<Integer, ElevatorInfo> elevatorMap;
 
@@ -48,20 +44,19 @@ public class Elevator extends Mechanism {
         intake = Intake.getInstance();
         currentElevatorPosition = ElevatorPosition.FLOOR;
         targetPosition = ElevatorPosition.FLOOR;
-        intakeMode = IntakePosition.HATCH;
+        intakeMode = IntakePosition.CARGO;
         buttonBox = new Joystick(Constants.BUTTON_BOX_PORT);
         lidar = new LIDAR(new DigitalInput(Constants.ELEVATOR_LIDAR_PORT));
         elevatorTalon = new TalonSRX(Constants.ELEVATOR_TALON_PORT);
-        //topLS = new DigitalInput(Constants.TOP_LS_PORT);
-        //bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
+        topLS = new DigitalInput(Constants.TOP_LS_PORT);
+        bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
         elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 0);
         elevatorTalon.setNeutralMode(NeutralMode.Brake);
-        elevatorTalon.setInverted(false);
+        elevatorTalon.setInverted(true);
         elevatorTalon.configMotionAcceleration(1000, 0);
         elevatorTalon.configMotionCruiseVelocity(5000, 0);
         elevatorTalon.configClosedloopRamp(0, 256);
         elevatorTalon.configOpenloopRamp(0, 256);
-
 
         elevatorTalon.config_kP(0, Constants.HATCH_ELEVATOR_GAINS[0], 0);
         elevatorTalon.config_kI(0, Constants.HATCH_ELEVATOR_GAINS[1], 0);
@@ -77,14 +72,19 @@ public class Elevator extends Mechanism {
         elevatorTalon.config_IntegralZone(1, 200, 0);
         elevatorTalon.configAllowableClosedloopError(1, Constants.ELEVATOR_ENC_THRESHOLD, 0);
 
-        encCount = elevatorTalon.getSelectedSensorPosition(1);
+        cargoPID = new frc.robot.PIDController();
+        hatchPID = new frc.robot.PIDController();
+
+
+        previousEncoderCount = elevatorTalon.getSelectedSensorPosition(0);
         lidarValue = lidar.getDistanceCm();
-        timeOfLastMotorCommand = 0;
         completeManualOverride = false;
+        topLSPressed = false;
+        bottomLSPressed = false;
+        lidarBias = true;
         buttonID = new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-        levels = new ElevatorPosition[] {ElevatorPosition.FLOOR, ElevatorPosition.LOW, ElevatorPosition.MID, ElevatorPosition.HIGH};
         elevatorMap = new HashMap<Integer, ElevatorInfo>();
-        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, /*I have no clue why this doesnt work, should be null*/IntakePosition.HATCH , -1));
+        elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, null , -1));
         
         elevatorMap.put(2, new ElevatorInfo(ElevatorPosition.LOW, IntakePosition.HATCH, Constants.LEFT_ROCKET_TARGET_AZIMUTH));
         elevatorMap.put(3, new ElevatorInfo(ElevatorPosition.LOW, IntakePosition.CARGO, Constants.MID_ROCKET_TARGET_AZIMUTH));
@@ -98,12 +98,11 @@ public class Elevator extends Mechanism {
         elevatorMap.put(9, new ElevatorInfo(ElevatorPosition.HIGH, IntakePosition.TOP_ROCKET_TILT, Constants.MID_ROCKET_TARGET_AZIMUTH));
         elevatorMap.put(10, new ElevatorInfo(ElevatorPosition.HIGH, IntakePosition.HATCH, Constants.RIGHT_ROCKET_TARGET_AZIMUTH));
 
-        //Desired inputs should be null, not sure why it doesnt work
-        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.LEFT_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.MID_CARGO_TARGET_AZIMUTH));
-        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(11, new ElevatorInfo(ElevatorPosition.MID, null, Constants.LEFT_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(12, new ElevatorInfo(ElevatorPosition.MID, null, Constants.MID_CARGO_TARGET_AZIMUTH));
+        elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, null, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
         
-        elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, IntakePosition.HATCH, Constants.LOADING_STATION_TARGET_AZIMUTH));
+        elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, null, Constants.LOADING_STATION_TARGET_AZIMUTH));
     }
 
     public void drive(XboxController controller) {
@@ -118,24 +117,41 @@ public class Elevator extends Mechanism {
             (new JoystickRumble(controller, 1)).start();
         } 
 
-        //manualSpeedInput = (Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) - Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1)) * 1.2;
-        //elevatorTalon.set(ControlMode.PercentOutput, manualSpeedInput);
-        if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, controller.getY(Hand.kLeft));
-        }
-        if(controller.getBumper(Hand.kRight) && targetPosition != levels[levels.length-1] && currentElevatorPosition != null) {
-            if(currentElevatorPosition != null) {
-                targetPosition = levels[currentElevatorPosition.ordinal() + 1];
-            } else {
-                targetPosition = levels[previousElevatorPosition.ordinal() + 1];
-            }
-        } else if(controller.getBumper(Hand.kLeft) && targetPosition != levels[0] && currentElevatorPosition != null) {
-            if(currentElevatorPosition != null) {
-                targetPosition = levels[currentElevatorPosition.ordinal() - 1];
-            } else {
-                targetPosition = levels[previousElevatorPosition.ordinal() - 1];
-            }
+        manualSpeedInput = (Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) - Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1));
+        elevatorTalon.set(ControlMode.PercentOutput, manualSpeedInput);
+        /*if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
+            elevatorTalon.set(ControlMode.PercentOutput, Utilities.deadband(controller.getY(Hand.kLeft), 0.2));
+        }*/
+
+        if(controller.getBumper(Hand.kRight) && targetPosition != ElevatorPosition.HIGH) {
+            targetPosition = ElevatorPosition.values()[currentElevatorPosition.ordinal() + 1];
+        } else if(controller.getBumper(Hand.kLeft) && targetPosition != ElevatorPosition.FLOOR) {
+            targetPosition = ElevatorPosition.values()[currentElevatorPosition.ordinal() - 1];
         }   
+
+        if(controller.getBumper(Hand.kLeft) && controller.getBumper(Hand.kRight)) {
+            lidarBias = !lidarBias;
+            (new JoystickRumble(controller, 1)).start();
+        }
+
+        drive();
+        updateElevatorPosition();
+    }  
+    public void drive() {
+        if(topLS.get() && !topLSPressed) {
+            currentElevatorPosition = ElevatorPosition.HIGH;
+            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
+            topLSPressed = true;
+        } else {
+            topLSPressed = false;
+        }
+        if(bottomLS.get() && !bottomLSPressed) {
+            currentElevatorPosition = ElevatorPosition.LOW;
+            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
+            topLSPressed = true;
+        } else {
+            topLSPressed = false;
+        }
 
         for(int id : buttonID) {
             if(buttonBox.getRawButton(id)) {
@@ -145,15 +161,16 @@ public class Elevator extends Mechanism {
                     idOfLastButtonPressed = id;
                 }
             }
-        }
-
-        if(super.size() > 0 || !atTarget()) {
+        }  
+        if(!lidarBias)
+            System.out.println(elevatorTalon.getSelectedSensorPosition(0));
+        else
+            System.out.println(lidar.getDistanceCm());
+        if(super.size() > 0 || (target != null && !atTarget())) {
             if(super.size() > 0 && (target == null || atTarget())) {
                 target = super.pop();
             } 
-            if(target == null) {
-                
-            }
+            System.out.println(target);
             switch(target.getObjective()) {
                 case ELEVATORLOW:
                     commandElevator(ElevatorPosition.LOW);
@@ -206,12 +223,57 @@ public class Elevator extends Mechanism {
 
     //TODO: Implement Procedure for when encoderHealthy == false;
     //Likely Lidar PID Control
-    public void commandElevator(ElevatorPosition position) {
-        if(encoderHealthy && !atTarget()) {
-            System.out.println("---------------ELEVATOR COMMANDED");
-            elevatorTalon.set(ControlMode.MotionMagic, position.getTargetEncValue());
-            timeOfLastMotorCommand = System.currentTimeMillis();
+    public void commandElevator(ElevatorPosition targetPosition) {
+        if(setpointReached) {
+            setpointReached = false;
+            if(intakeMode == IntakePosition.HATCH) {
+                hatchPID.start(Constants.HATCH_ELEVATOR_GAINS, targetPosition.getTargetLidarValue());
+            } else {
+                cargoPID.start(Constants.CARGO_ELEVATOR_GAINS, targetPosition.getTargetLidarValue());
+            }
         }
+        if(lidarBias && !atTarget()) {
+            double output;
+            if(intakeMode == IntakePosition.HATCH) {
+                output = hatchPID.update(lidar.getDistanceCm());
+                setpointReached = Math.abs(hatchPID.getError()) < Constants.LIDAR_THRESHOLD;
+            } else {
+                output = cargoPID.update(lidar.getDistanceCm());
+                setpointReached = Math.abs(cargoPID.getError()) < Constants.LIDAR_THRESHOLD;
+            }
+            System.out.println("---------------LIDAR ELEVATOR COMMAND: " + targetPosition);
+            elevatorTalon.set(ControlMode.PercentOutput, output);
+        } else if(encoderHealthy && !atTarget()) {
+            System.out.println("---------------ENC ELEVATOR COMMANDED: " + targetPosition);
+            elevatorTalon.set(ControlMode.MotionMagic, targetPosition.getTargetEncValue());
+        }
+    }
+
+    private boolean atTarget() {
+        if(target == null) {
+            return false;
+        }
+        if(encoderHealthy) {
+            return setpointReached && getEncDelta(currentElevatorPosition) <= Constants.ELEVATOR_ENC_THRESHOLD && getLidarDelta(currentElevatorPosition) <= Constants.LIDAR_THRESHOLD;
+        } else {
+            return setpointReached && getLidarDelta(currentElevatorPosition) <= Constants.LIDAR_THRESHOLD;
+        }
+    }
+    
+    private void updateElevatorPosition() {
+        if(isEncoderValueInRange(ElevatorPosition.FLOOR)) {
+            currentElevatorPosition = ElevatorPosition.FLOOR;
+        } else if(isEncoderValueInRange(ElevatorPosition.LOW)) {
+            currentElevatorPosition = ElevatorPosition.LOW;
+        } else if(isEncoderValueInRange(ElevatorPosition.MID)) {
+            currentElevatorPosition = ElevatorPosition.MID;
+        } else if(isEncoderValueInRange(ElevatorPosition.HIGH)) {
+            currentElevatorPosition = ElevatorPosition.HIGH;
+        }
+    }
+
+    private boolean isEncoderValueInRange(ElevatorPosition desiredPosition) {
+        return Math.abs(desiredPosition.getTargetEncValue() - elevatorTalon.getSelectedSensorPosition(0)) <= Constants.ELEVATOR_ENC_THRESHOLD;
     }
 
     private void updateElevatorQueue(int buttonPressed) {

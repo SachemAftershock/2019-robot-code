@@ -15,6 +15,9 @@ public class BaseCmd {
     public AutoObjective getObjective() {
         return objective;
     }
+    public void setObjective(AutoObjective objective) {
+        this.objective = objective;
+    }
 
     public double getSetpoint() {
         return setpoint;
