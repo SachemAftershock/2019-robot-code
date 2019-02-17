@@ -1,6 +1,6 @@
 package frc.robot;
 
-class CircularBuffer<E> {
+class CircularBuffer {
     private double[] buffer;
     double mean;
 

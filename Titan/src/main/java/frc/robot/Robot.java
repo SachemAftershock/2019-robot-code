@@ -5,18 +5,17 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 public class Robot extends TimedRobot {
 
-  //SWDrive driveBase;
+  SWDrive driveBase;
   CANSparkMax spark;
   XboxController controller;
   //Compressor compressor;
 
   @Override 
   public void robotInit() {
-    //driveBase = SWDrive.getInstance();
+    driveBase = SWDrive.getInstance();
     spark = new CANSparkMax(9, MotorType.kBrushless);
     controller = new XboxController(0);
     //compressor = new Compressor();
@@ -27,7 +26,7 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     //Limelight.setCameraMode(CameraMode.eVision);
-    //driveBase.zero();
+    driveBase.zero();
   }
  
   @Override
@@ -36,14 +35,14 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    //driveBase.zero(); //TODO: remove after testing
+    
   }
 
   @Override
   public void teleopPeriodic() {
-    spark.set(Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
-    System.out.println(spark.getEncoder().getPosition());
-    //driveBase.drive();
+    //spark.set(Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
+    //System.out.println(spark.getEncoder().getPosition());
+    driveBase.drive();
 
   }
 

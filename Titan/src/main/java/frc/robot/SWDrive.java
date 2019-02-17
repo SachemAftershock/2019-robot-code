@@ -17,11 +17,12 @@ class SWDrive extends Mechanism {
     private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
-    private boolean tankEnabled, setpointReached, rotateSet, cubeSearch;
+    private boolean tankEnabled, setpointReached, rotateSet, cargoSearch;
     private AHRS navx;
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
+    private CircularBuffer tXBuffer;
 
     private SWDrive() {
         super();
@@ -69,11 +70,12 @@ class SWDrive extends Mechanism {
         navx = new AHRS(Port.kMXP);
         controller = new XboxController(Constants.PRIMARY_DRIVER_PORT);
         pid = new PIDController();
+        tXBuffer = new CircularBuffer(10);
 
         tankEnabled = false;
         setpointReached = true;
         rotateSet = false;
-        cubeSearch = false;
+        cargoSearch = false;
         leftTarget = 0;
         rightTarget = 0;
     }
@@ -100,8 +102,8 @@ class SWDrive extends Mechanism {
                 case DRIVEROTATE:
                     autoRotate(target.getSetpoint());
                     break;
-                case CUBESEARCH:
-                    rotateCube(target.getSetpoint());
+                case CARGOSEARCH:
+                    rotateCargo(target.getSetpoint());
                 default:
                     break;
             }
@@ -116,10 +118,10 @@ class SWDrive extends Mechanism {
             super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
         }
 
-        if(controller.getBumper(Hand.kLeft) && !cubeSearch) {
-            super.push(new CubeSearchCmd(-1.0)); //TODO: Make enum for (counter)clockwise
-        } else if(controller.getBumper(Hand.kRight) && !cubeSearch) {
-            super.push(new CubeSearchCmd(1.0));
+        if(controller.getBumper(Hand.kLeft) && !cargoSearch) {
+            super.push(new CargoSearchCmd(-1.0)); //TODO: Make enum for (counter)clockwise
+        } else if(controller.getBumper(Hand.kRight) && !cargoSearch) {
+            super.push(new CargoSearchCmd(1.0));
         }
 
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
@@ -134,7 +136,8 @@ class SWDrive extends Mechanism {
         }
         
         rotateSet = controller.getPOV() >= 0;
-        cubeSearch = controller.getBumper(Hand.kLeft) || controller.getBumper(Hand.kRight);
+        cargoSearch = controller.getBumper(Hand.kLeft) || controller.getBumper(Hand.kRight);
+        tXBuffer.push(Limelight.getTx());
     }
 
     public void autoDrive(double setpoint) {
@@ -150,23 +153,24 @@ class SWDrive extends Mechanism {
         setpointReached = (Math.abs(leftMaster.getSelectedSensorPosition() - leftTarget) < Constants.LINEAR_EPSILON && Math.abs(rightMaster.getSelectedSensorPosition() - rightTarget) < Constants.LINEAR_EPSILON);
     }
 
-    public void rotateCube(double direction) {
+    public void rotateCargo(double direction) {
         if(setpointReached) {
             setpointReached = false;
             pid.start(Constants.ROTATE_GAINS);
         }
 
         if(Limelight.isTarget()) {
+                                            //use tXBuffer.getSmoothedValue() for smoothed??
             double normAngle = Utilities.normalizeAngle(Limelight.getTx());
             double output = pid.updateRotation(navx.getYaw(), normAngle);
 
             driveMotors(output, -output);
         } else {
-            double speed = direction * Constants.CUBE_SEARCH_ROTATE_SPEED;
+            double speed = direction * Constants.CARGO_SEARCH_ROTATE_SPEED;
             driveMotors(speed, -speed);
         }
 
-        setpointReached = Limelight.isTarget() && Math.abs(Limelight.getTx()) < Constants.CUBE_SEARCH_EPSILON;
+        setpointReached = Limelight.isTarget() && Math.abs(Limelight.getTx()) < Constants.CARGO_SEARCH_EPSILON;
     }
 
     public void autoRotate(double theta) {
