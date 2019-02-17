@@ -227,18 +227,18 @@ public class Elevator extends Mechanism {
         if(setpointReached) {
             setpointReached = false;
             if(intakeMode == IntakePosition.HATCH) {
-                hatchPID.start(Constants.HATCH_ELEVATOR_GAINS, targetPosition.getTargetLidarValue());
+                hatchPID.start(Constants.HATCH_ELEVATOR_GAINS);
             } else {
-                cargoPID.start(Constants.CARGO_ELEVATOR_GAINS, targetPosition.getTargetLidarValue());
+                cargoPID.start(Constants.CARGO_ELEVATOR_GAINS);
             }
         }
         if(lidarBias && !atTarget()) {
             double output;
             if(intakeMode == IntakePosition.HATCH) {
-                output = hatchPID.update(lidar.getDistanceCm());
+                output = hatchPID.update(lidar.getDistanceCm(), targetPosition.getTargetLidarValue());
                 setpointReached = Math.abs(hatchPID.getError()) < Constants.LIDAR_THRESHOLD;
             } else {
-                output = cargoPID.update(lidar.getDistanceCm());
+                output = cargoPID.update(lidar.getDistanceCm(), targetPosition.getTargetLidarValue());
                 setpointReached = Math.abs(cargoPID.getError()) < Constants.LIDAR_THRESHOLD;
             }
             System.out.println("---------------LIDAR ELEVATOR COMMAND: " + targetPosition);
