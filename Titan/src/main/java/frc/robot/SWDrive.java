@@ -119,7 +119,7 @@ class SWDrive extends Mechanism {
         }
        
         if(controller.getPOV() >= 0 && !rotateSet) {
-            super.push(new RotateCmd(controller.getPOV()));
+            super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
         }
 
         if(controller.getXButtonReleased() && gearSolenoid.get() != Value.kForward) {
@@ -138,6 +138,7 @@ class SWDrive extends Mechanism {
         /*if(controller.getBumper(Hand.kRight)) {
             climber.toggleFrontPistons();
         }
+        
         if(controller.getBumper(Hand.kLeft)) {
             climber.toggleRearPiston();
         } */
@@ -159,13 +160,15 @@ class SWDrive extends Mechanism {
     }
 
     public void autoRotate(double theta) {
+        theta = Utilities.normalizeAngle(theta);
+
         if(setpointReached) {
             setpointReached = false;
             pid.start(Constants.ROTATE_GAINS, theta);
+            //System.out.println(navx.getYaw() + " " + theta + " " + (navx.getYaw() - theta));
         }
+        double output = pid.updateError(Utilities.rotationalError(navx.getYaw(), theta));
 
-        double yaw = navx.getYaw();
-        double output = pid.update(yaw < 0 ? yaw + 360 : yaw);
         driveMotors(output, -output);
 
         setpointReached = Math.abs(pid.getError()) < Constants.ROTATE_EPSILON;

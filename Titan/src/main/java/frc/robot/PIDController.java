@@ -21,12 +21,22 @@ class PIDController {
 
     public double update(double current) {
         error = setpoint - current;
+        return this.updateError(error);
+    }
+
+    public double updateError(double error) {
+        this.error = error;
         integral += error;
         derivative = error - prevError;
 
         double output = gains[0] * error + gains[1] * integral + gains[2] * derivative;
         prevError = error;
-        return Math.abs(output) > 1.0 ? output / output : output;
+
+        if(Math.abs(output) > 1.0) {
+            output /= output < 0 ? -output : output;
+        }
+
+        return output;
     }
 
     public void start(double[] gains, double setpoint) {
