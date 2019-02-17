@@ -1,7 +1,8 @@
-package frc.robot;
+package frc.robot.Commands;
 
-class BaseCmd {
-    enum AutoObjective {DRIVELINEAR, DRIVEROTATE};
+import frc.robot.Enums.AutoObjective;
+
+public class BaseCmd {
 
     AutoObjective objective;
     double setpoint;
@@ -18,5 +19,4 @@ class BaseCmd {
     public double getSetpoint() {
         return setpoint;
     }
-
 }

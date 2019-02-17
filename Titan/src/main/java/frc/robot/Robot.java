@@ -2,15 +2,28 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
 
 public class Robot extends TimedRobot {
 
   SWDrive driveBase;
+  Elevator elevator;
+  Intake intake;
+  //PistonClimber pistonClimber; //NOTE: Piston Climber is not used in this file; used in SWDrive
+  //Climber climber;
+
   Compressor compressor;
+  XboxController sDriver;
 
   @Override
   public void robotInit() {
     driveBase = SWDrive.getInstance();
+    intake = Intake.getInstance();
+    elevator = Elevator.getInstance();
+    //pistonClimber = PistonClimber.getInstance();
+    //climber = Climber.getInstance();
+
+    sDriver = new XboxController(Constants.SECONDARY_DRIVER_PORT);
 
     compressor = new Compressor();
     compressor.start();
@@ -24,6 +37,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
+    commonPeriodic();
   }
 
   @Override
@@ -33,7 +47,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
+    commonPeriodic();
+  }
+
+  public void commonPeriodic() {
     driveBase.drive();
+    elevator.drive(sDriver);
+    intake.drive(sDriver);
   }
 
   @Override
@@ -42,6 +62,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
+    commonPeriodic();
+    if(sDriver.getStartButton() && sDriver.getBackButton()) {
+        //TODO: Probably Turn on LEDs in Error Mode
+        //TODO: Use Dashboard or something to Process BIT
+    }
   }
-
 }
