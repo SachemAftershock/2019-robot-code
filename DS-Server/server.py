@@ -1,4 +1,5 @@
 from StreamUtils import *
+from scipy import ndimage
 import numpy as np
 import threading
 import base64
@@ -11,7 +12,7 @@ import time
 import cv2
 
 servers = []
-available_ports = [(5810, 0)]
+available_ports = [(5809, 0), (5810, 1), (5811, 2)]
 
 class ServerStreamer:
 	def __init__(self, port, cam_id):
@@ -19,6 +20,7 @@ class ServerStreamer:
 		self.server_socket.bind(('', port))
 		self.server_socket.settimeout(5.0)
 		self.frame = None
+		self.orientation = 0
 		self.MAX_INT = (2 ** 31) - 1
 		self.packet_size = 1000
 		self.port = port
@@ -26,6 +28,10 @@ class ServerStreamer:
 		self.first = True
 		self.running = True
 		self.cmd_string = ''
+		self.last_timestamp = 0
+		self.process = False
+		#self.V = 0
+		#self.H = 0
 
 		self.stream_width = bimpy.Float(320)
 		self.stream_height = bimpy.Float(240)
@@ -39,6 +45,13 @@ class ServerStreamer:
 				bframe_length, address = self.server_socket.recvfrom(4)
 				frame_length = struct.unpack('!i', bframe_length)[0]
 
+				info_bytes = StreamUtils.compress_string(self.cmd_string)
+				binfo_length = StreamUtils.itob(len(info_bytes))
+				self.cmd_string = ''
+
+				self.server_socket.sendto(binfo_length, address)
+				self.server_socket.sendto(info_bytes, address)
+
 				recieved = 0
 				bframe = b''
 				while recieved < frame_length - self.packet_size:
@@ -50,6 +63,8 @@ class ServerStreamer:
 				bframe += btail_message
 
 				self.frame = StreamUtils.decompress_frame(bframe)
+				self.orientation %= 360
+				self.last_timestamp = time.time()
 				self.first = False
 
 			except Exception as e:
@@ -61,28 +76,67 @@ class ServerStreamer:
 		self.destroy()
 
 	def update_settings(self):
-		self.cmd_string += 'width#%d|height#%d' % (int(self.stream_width.value), int(self.stream_height.value))
-
-	def reset_settings(self):
-		for cmd in self.client_string.split('|'):
-			data = cmd.split('#')
-			if len(data) != 2:
-				return
-			elif data[0] == 'width':
-				self.stream_width.value = int(data[1])
-			elif data[0] == 'height':
-				self.stream_height.value = int(data[1])
+		self.cmd_string += '|width#%d|height#%d' % (int(self.stream_width.value), int(self.stream_height.value))
 
 	def destroy(self):
 		self.running = False
 		servers.remove(self)
 		available_ports.append((self.port, self.cam_id))
-		atexit.unregister(self.release)
 		self.release()
+
+	def kill(self):
+		tmp = self.last_timestamp
+		self.cmd_string += '|kill'
+		while tmp == self.last_timestamp:
+			pass
+
+		self.running = False
 
 	def release(self):
 		self.server_socket.close()
 		cv2.destroyAllWindows()
+
+class FrameViewer:
+	def __init__(self):
+		Ty = [19.0, 0.3, -11.71]
+		d_measured = [58.25, 8.0, 0.0]
+		Tx_measured = [0.0, 6.0, 18.0]
+		Fy = [0, 50, 100]
+		Fx_measured = [45, 25, 10]
+
+		self.tape_coefficients = np.polyfit(Fy, Fx_measured, 2)
+		self.tape_polynomial_function = np.poly1d(self.tape_coefficients)
+
+		self.limelight_Tx_coefficients = np.polyfit(Ty, Tx_measured, 2)
+		self.Tx_polynomial_function = np.poly1d(self.limelight_Tx_coefficients)
+
+		self.limelight_distance_coefficients = np.polyfit(Ty, d_measured, 2)
+		self.distance_polynomial_function = np.poly1d(self.limelight_distance_coefficients)
+
+	def get_min_distance(centroids, frame_height):
+		sorted_centroids = sorted(centroids, key = lambda pt: abs(pt[0] - polynomial_function(pt[1] / frame_height)))
+		return abs(sorted_centroids[0][0] - polynomial_function(sorted_centroids[0][1] / frame_height))
+
+	def render(self, identify, min_aspect_ratio):
+		frames = []
+		for server in servers:
+			if server.frame is not None:
+				frame = ndimage.rotate(server.frame, server.orientation)
+				if identify:
+					cv2.putText(frame, '%d' % server.cam_id, (int(frame.shape[0] / 2.), int(frame.shape[1] / 2.)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+				
+				frames.append(frame)
+
+				if server.process:
+					overlay, centroids = StreamUtils.process_image(frame, min_aspect_ratio.value)
+					frames.append(overlay)
+					print(centroids)
+			
+		stitched = StreamUtils.stitch_frames(frames)
+		if stitched is not None:
+			cv2.imshow('Stitched', stitched)
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				exit(1)
 
 class ConfigServer:
 	def __init__(self, port = 5807, packet_size = 1000):
@@ -92,10 +146,10 @@ class ConfigServer:
 		self.packet_size = packet_size
 
 		atexit.register(self.release)
-		self.is_running = True
+		self.running = True
 
 	def process_command(self):
-		while True:
+		while self.running:
 			command, address = StreamUtils.recieve_packet(self.server_socket, timeout_kill = True)
 			if command == 1 and address == 1:
 				continue
@@ -125,13 +179,16 @@ class GUI:
 	def __init__(self, width, height, title):
 		self.width = width
 		self.height = height
+		self.identify = False
 
 		self.ctx = bimpy.Context()
 		self.ctx.init(width, height, title)
 
+		self.min_aspect_ratio = bimpy.Float(0.0)
+
 	def render(self, config_server):
 		if self.ctx.should_close():
-			return
+			return 0
 
 		self.ctx.new_frame()
 		bimpy.set_next_window_pos(bimpy.Vec2(0, 0), bimpy.Condition.Once)
@@ -143,37 +200,98 @@ class GUI:
 		bimpy.end()
 		self.ctx.render()
 
+		return 1
+
 	def draw_gui(self, config_server):
 
 		frames = []
 
+		if bimpy.button("Load Profile"):
+			with open('config.txt', 'r') as f:
+				lines = f.readlines()
+				for index, server in enumerate(servers):
+					items = lines[index].split(' ')
+					server.orientation = int(items[0])
+					server.process = int(items[1])
+		bimpy.same_line()
+
+		if bimpy.button("Save Profile"):
+			with open('config.txt', 'w') as f:
+				for server in servers:
+					f.write('%d %d\n' % (server.orientation, server.process))
+		bimpy.same_line()
+
+		if bimpy.button("Identify"):
+				self.identify = not self.identify
+		bimpy.same_line()
+
+		if bimpy.button("Print ports"):
+			print(available_ports)
+
+		bimpy.slider_float("Min Aspect Ratio", self.min_aspect_ratio, 0.0, 10.0)
+		bimpy.new_line()
+
 		for server in servers:
-			bimpy.slider_float("Stream Width %d" % server.cam_id, server.stream_width, 320, 640)
-			bimpy.slider_float("Stream Height %d" % server.cam_id, server.stream_height, 240, 480)
+			bimpy.slider_float("Stream Width %d" % server.cam_id, server.stream_width, 0, 640)
+			bimpy.slider_float("Stream Height %d" % server.cam_id, server.stream_height, 0, 480)
 
 			if bimpy.button("Update %d" % server.cam_id):
 				server.update_settings()
-
 			bimpy.same_line()
-			if bimpy.button("Reset %d" % server.cam_id):
-				server.reset_settings()
+
+			if bimpy.button("Add Processing %d" % server.cam_id):
+				server.process = True
+			bimpy.same_line()
+
+			if bimpy.button("Remove Processing %d" % server.cam_id):
+				server.process = False
+
+			if bimpy.button("Rotate 90 %d" % server.cam_id):
+				server.orientation += 90
+			bimpy.same_line()
+
+			if bimpy.button("Rotate -90 %d" % server.cam_id):
+				server.orientation -= 90
+			bimpy.same_line()
+
+			if bimpy.button("Rotate 180 %d" % server.cam_id):
+				server.orientation += 180
+
+			'''
+			if bimpy.button("V+ %d" % server.cam_id):
+				server.V += 1
+			bimpy.same_line()
+
+			if bimpy.button("V- %d" % server.cam_id):
+				server.V -= 1
+			bimpy.same_line()
+
+			if bimpy.button("H+ %d" % server.cam_id):
+				server.H += 1
+			bimpy.same_line()
+
+			if bimpy.button("H- %d" % server.cam_id):
+				server.H -= 1
+			'''
 
 			bimpy.new_line()
-			frames.append(server.frame)
-		stitched = StreamUtils.stitch_frames(frames)
-		if stitched is not None:
-			cv2.imshow('Stitched', stitched)
-			if cv2.waitKey(1) & 0xFF == ord('q'):
-				exit(1)
-
+			bimpy.new_line()
 
 def main():
-	gui = GUI(500, 400, "Sachem Aftershock Camera Streamer")
+	gui = GUI(600, 600, "Sachem Aftershock Camera Streamer")
+	viewer = FrameViewer()
 	config_server = ConfigServer()
 	
 	threading.Thread(target = config_server.process_command).start()
-	while config_server.is_running:
-		gui.render(config_server)
+	while config_server.running:
+		if gui.render(config_server) == 0:
+			break
+		viewer.render(gui.identify, gui.min_aspect_ratio)
+
+	for server in servers:
+		server.kill()
+	config_server.running = False
+	cv2.destroyAllWindows()
 		
 
 if __name__ == '__main__':

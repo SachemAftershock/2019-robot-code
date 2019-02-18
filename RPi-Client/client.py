@@ -38,7 +38,7 @@ class Camera:
 		self.cam.release()
 
 class ConfigClient:
-	def __init__(self, server_address = '10.2.63.5', server_port = 5807, packet_size = 1000):
+	def __init__(self, server_address = 'localhost', server_port = 5807, packet_size = 1000):
 		self.comm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.comm_socket.bind(('', 0))
 		self.comm_socket.settimeout(1.0)
@@ -76,13 +76,14 @@ class ClientStreamer:
 		self.packet_size = packet_size
 		self.camera = Camera(cam_index, cap_width, cap_height)
 		self.cmd_string = 'width#%d|height#%d' % (cap_width, cap_height)
+		self.running = True
 		
 		atexit.register(self.release)
 		threading.Thread(target = self.streamer_thread).start()
 
 	def streamer_thread(self):
 
-		while True:
+		while self.running:
 			try:
 				'''
 				frame = self.camera.get_frame()
@@ -107,10 +108,20 @@ class ClientStreamer:
 				bframe_length = StreamUtils.itob(len(frame_bytes))
 
 				self.comm_socket.sendto(bframe_length, self.server)
+
+				bserver_info_length, address = self.comm_socket.recvfrom(4)
+				server_info_length = StreamUtils.btoi(bserver_info_length)
+
+				bserver_info, address = self.comm_socket.recvfrom(server_info_length)
+				server_info = StreamUtils.decompress_string(bserver_info)
+
 				sent = 0
 				while sent < len(frame_bytes):
 					self.comm_socket.sendto(frame_bytes[sent:sent + self.packet_size], self.server)
 					sent += self.packet_size
+
+				if len(server_info) > 0:
+					self.parse_commands(server_info.split('|'))
 
 
 				#self.comm_socket.sendto(self.p, self.server)
@@ -148,15 +159,15 @@ class ClientStreamer:
 					StreamUtils.dbgprint('Exception caught in ClientStreamer::streamer_thread:', str(e))
 
 	def parse_commands(self, commands):
-		res = [640, 480]
+		res = [self.camera.width, self.camera.height]
 		for command in commands:
 			data = command.split('#')
 			if data[0] == 'width':
 				res[0] = int(data[1])
-				#self.camera.set_prop(cv2.CAP_PROP_FRAME_WIDTH, int(data[1]))
 			elif data[0] == 'height':
 				res[1] = int(data[1])
-				#self.camera.set_prop(cv2.CAP_PROP_FRAME_HEIGHT, int(data[1]))
+			elif data[0] == 'kill':
+				self.running = False
 		self.camera.set_res(res[0], res[1])
 
 	def release(self):
@@ -166,9 +177,13 @@ class ClientStreamer:
 def main():
 	config = ConfigClient()
 	streams = [config.create_streamer()]#[config.create_streamer(), config.create_streamer(), config.create_streamer(), config.create_streamer(), config.create_streamer()]
-
-	while True:
+	running = True
+	while running:
 		config.send_message()
+
+		for stream in streams:
+			if not stream.running:
+				running = False
 	
 
 if __name__ == '__main__':
