@@ -29,7 +29,7 @@ public class Elevator extends Mechanism {
     private LIDAR lidar;
     private int[] buttonID;
     private frc.robot.PIDController cargoPID, hatchPID;
-    private boolean completeManualOverride, encoderHealthy, hatchModeEnabled, topLSPressed, bottomLSPressed, lidarBias, firstTime, setpointReached;
+    private boolean completeManualOverride, encoderHealthy, hatchModeEnabled, topLSPressed, bottomLSPressed, lidarBias, setpointReached;
     private int previousEncoderCount, idOfLastButtonPressed;
     private double lidarValue, manualSpeedInput;
 
@@ -142,14 +142,14 @@ public class Elevator extends Mechanism {
             currentElevatorPosition = ElevatorPosition.HIGH;
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             topLSPressed = true;
-        } else {
+        } else if (!topLS.get() && topLSPressed) {
             topLSPressed = false;
         }
         if(bottomLS.get() && !bottomLSPressed) {
             currentElevatorPosition = ElevatorPosition.LOW;
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             topLSPressed = true;
-        } else {
+        } else if (!bottomLS.get() && bottomLSPressed) {
             topLSPressed = false;
         }
 
@@ -241,10 +241,10 @@ public class Elevator extends Mechanism {
                 output = cargoPID.update(lidar.getDistanceCm(), targetPosition.getTargetLidarValue());
                 setpointReached = Math.abs(cargoPID.getError()) < Constants.LIDAR_THRESHOLD;
             }
-            System.out.println("---------------LIDAR ELEVATOR COMMAND: " + targetPosition);
+            System.out.println("---------------LIDAR ELEVATOR COMMAND: " + targetPosition + "\n   OUTPUT: " + output);
             elevatorTalon.set(ControlMode.PercentOutput, output);
         } else if(encoderHealthy && !atTarget()) {
-            System.out.println("---------------ENC ELEVATOR COMMANDED: " + targetPosition);
+            System.out.println("---------------ENC ELEVATOR COMMANDED: " + targetPosition + "\n   ENC: " + targetPosition.getTargetEncValue());
             elevatorTalon.set(ControlMode.MotionMagic, targetPosition.getTargetEncValue());
         }
     }
