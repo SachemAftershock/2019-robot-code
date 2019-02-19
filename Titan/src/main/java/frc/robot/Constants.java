@@ -13,8 +13,8 @@ public class Constants {
     public static final int DRIVE_SOLENOID_FORWARD = 0;
     public static final int DRIVE_SOLENOID_REVERSE = 1;
 
-    public static final double[] LINEAR_GAINS = {0.75, 0.0, 10};
-    public static final double[] ROTATE_GAINS = {0.016, 0.0001, 0.18};
+    public static final double[] LINEAR_GAINS = {0.33, 0.0, 10};
+    public static final double[] ROTATE_GAINS = {0.024, 0.0001, 0.2};
     public static final double TURNING_CONSTANT = 1.0;
     public static final double ROTATE_EPSILON = 3;
     public static final int LINEAR_EPSILON = 200;
@@ -30,21 +30,21 @@ public class Constants {
 
     //TODO: Finalize all Numbers Below
     public static final double INTAKE_SPEED = 0.6;
-    public static final double[] TILT_GAINS = {0.07, 0.0, 0.05, 0.0, 0.0};    //public static final double[] TILT_GAINS = {0.7, 0.3, 0.4, 0.2, 0.0};
+    public static final double[] TILT_GAINS = {0.07, 0.0, 0.05, 0.0, 0.0};
     public static final int LEFT_HATCH_SOLENOID_FORWARD = 4;
     public static final int LEFT_HATCH_SOLENOID_REVERSE = 5;
     public static final int RIGHT_HATCH_SOLENOID_FORWARD = 6;
     public static final int RIGHT_HATCH_SOLENOID_REVERSE = 7;
     public static final int INTAKE_MODE_TOGGLE_BUTTON = 15;
     public static final int CARGO_BUTTON_PORT = 3;
-    public static final double TILT_THRESHOLD = 0.5;
+    public static final double TILT_THRESHOLD = 0.35;
 
     public static final int ELEVATOR_TALON_PORT = 4;
     public static final int ELEVATOR_LIDAR_PORT = 6;
     public static final int TOP_LS_PORT = 4;
     public static final int BOTTOM_LS_PORT = 5;
-    public static final double[] HATCH_ELEVATOR_GAINS = {0.4, 0.0, 0.0};
-    public static final double[] CARGO_ELEVATOR_GAINS = {0.4, 0.0, 0.0};
+    public static final double[] HATCH_ELEVATOR_GAINS = {0.045, 0.1, 0.055};
+    public static final double[] CARGO_ELEVATOR_GAINS = {0.05, 0.001, 0.00001};
     public static final int ELEVATOR_ENC_THRESHOLD = 75;
     public static final double LIDAR_THRESHOLD = 4.0;
 
@@ -75,9 +75,9 @@ public class Constants {
     */
     public static final int CLIMBER_PCM_PORT = 1;
     public static final int CLIMBER_FRONT_PISTON_FORWARD_PORT = 0;
-    public static final int CLIMBER_FRONT_PISTON_REVERSE_PORT = 1;
+    public static final int CLIMBER_FRONT_PISTON_REVERSE_PORT = 3;
     public static final int CLIMBER_REAR_PISTON_FORWARD_PORT = 2;
-    public static final int CLIMBER_REAR_PISTON_REVERSE_PORT =3;
+    public static final int CLIMBER_REAR_PISTON_REVERSE_PORT = 1;
 
     public static final double CARGO_SEARCH_ROTATE_SPEED = 0.5;
     public static final double CARGO_SEARCH_EPSILON = 3;

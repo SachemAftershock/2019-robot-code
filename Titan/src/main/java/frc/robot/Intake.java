@@ -32,7 +32,7 @@ public class Intake extends Mechanism {
     private Mode autoMode;
     private enum Mode {SETUP, WAITUNTILFINISHED};
     private long startTime, timeout;
-    private boolean taskCompleted, firstTime;
+    private boolean cargoButtonPressed, taskCompleted, firstTime;
 
     public Intake() {
         super();
@@ -61,6 +61,7 @@ public class Intake extends Mechanism {
 
         taskCompleted = true;
         firstTime = true;
+        cargoButtonPressed = false;
         autoMode = Mode.SETUP;
         startTime = 0;
 
@@ -118,6 +119,8 @@ public class Intake extends Mechanism {
             super.flush();
             System.out.println("FLUSHED");
             target = new IntakeCmd(AutoObjective.TILTHATCH, -1);
+            leftHatchPistons.set(Value.kReverse);
+            rightHatchPistons.set(Value.kReverse);
             firstTime = false;
         }
         if(controller.getStartButtonPressed()) {
@@ -126,9 +129,13 @@ public class Intake extends Mechanism {
         if(controller.getStickButton(Hand.kRight)) {
             tiltEncoder.setPosition(0.0);
         }
-        if(cargoButton.get() && !controller.getBButton()) {
+        if(!cargoButton.get() && !cargoButtonPressed) {
             rightArm.set(ControlMode.PercentOutput, 0);
-        } 
+            super.push(new IntakeCmd(AutoObjective.TILTHATCH, -1));
+            cargoButtonPressed = true;
+        } else {
+            cargoButtonPressed = false;
+        }
         
         if(controller.getBumper(Hand.kLeft) && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
@@ -213,7 +220,7 @@ public class Intake extends Mechanism {
                 autoMode = Mode.WAITUNTILFINISHED;
                 break;
             case WAITUNTILFINISHED:
-                if(System.currentTimeMillis() - startTime >= 2000) {
+                if(System.currentTimeMillis() - startTime >= 1000) {
                     leftHatchPistons.set(Value.kReverse);
                     rightHatchPistons.set(Value.kReverse);
                     autoMode = Mode.SETUP;
@@ -232,25 +239,30 @@ public class Intake extends Mechanism {
         if(targetPosition != Elevator.getInstance().getIntakePosition()) {
            // System.out.println("TARGET: " + targetPosition.getTargetEncValue() + " CURRENT: " + tiltEncoder.getPosition() + " ERROR: " + (targetPosition.getTargetEncValue() - tiltEncoder.getPosition()));
             //output = pid.update(tiltEncoder.getPosition(), targetPosition.getTargetEncValue());
-            System.out.println("RUNNING--------------------------------");
+            //System.out.println("RUNNING--------------------------------");
             tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition); 
             //System.out.println("TARGET:" + targetPosition + " TARGET-ENC-VALUE:" + targetPosition.getTargetEncValue() + " " + tiltEncoder.getPosition() + " " + atTarget(targetPosition));
             //System.out.println("------ERROR:" + (targetPosition.getTargetEncValue() - tiltEncoder.getPosition()));
         }
         //System.out.println("ELASPED TIME: " + (System.currentTimeMillis() - timeOut));
-        if(System.currentTimeMillis() - timeout >= 1500) {
-            System.out.println("TIMED OUT");
-            Elevator.getInstance().setIntakePosition(targetPosition);
-            taskCompleted = true;
-        }
         //System.out.println("OUTPUT: " + output);
-        System.out.println("AT TARGET:" + atTarget(targetPosition));
+        //System.out.println("AT TARGET:" + atTarget(targetPosition));
         if(atTarget(targetPosition)) {
+            System.out.println("REACHED TILT TARGET");
             Elevator.getInstance().setIntakePosition(targetPosition);
             Elevator.getInstance().updateTalonPIDProfile();
             taskCompleted = true;
             return;
         }
+        if(System.currentTimeMillis() - timeout >= 500) {
+            System.out.println("TIMED OUT");
+            Elevator.getInstance().setIntakePosition(targetPosition);
+            taskCompleted = true;
+            return;
+        }
+    }
+    public double getTiltEnc() {
+        return tiltEncoder.getPosition();
     }
 
     //Wrapper Function to check if at Target

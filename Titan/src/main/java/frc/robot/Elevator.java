@@ -54,7 +54,7 @@ public class Elevator extends Mechanism {
         bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
         elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 0);
         elevatorTalon.setNeutralMode(NeutralMode.Brake);
-        elevatorTalon.setInverted(true);
+        elevatorTalon.setInverted(false);
         elevatorTalon.configMotionAcceleration(1000, 0);
         elevatorTalon.configMotionCruiseVelocity(5000, 0);
         elevatorTalon.configClosedloopRamp(0, 256);
@@ -82,6 +82,7 @@ public class Elevator extends Mechanism {
         bottomLSPressed = false;
         lidarHealthy = true;
         firstRun = true;
+        setpointReached = true;
         buttonID = new int[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
         elevatorMap = new HashMap<Integer, ElevatorInfo>();
         elevatorMap.put(1, new ElevatorInfo(ElevatorPosition.FLOOR, null , -1));
@@ -103,8 +104,6 @@ public class Elevator extends Mechanism {
         elevatorMap.put(13, new ElevatorInfo(ElevatorPosition.MID, null, Constants.RIGHT_CARGO_TARGET_AZIMUTH));
         
         elevatorMap.put(14, new ElevatorInfo(ElevatorPosition.MID, null, Constants.LOADING_STATION_TARGET_AZIMUTH));
-        hatchPID.start(Constants.HATCH_ELEVATOR_GAINS);
-        cargoPID.start(Constants.CARGO_ELEVATOR_GAINS);
         elevatorTalon.setSelectedSensorPosition(0);
         super.flush();
     }
@@ -114,7 +113,7 @@ public class Elevator extends Mechanism {
             super.flush();
             firstRun = false;
         }
-        //System.out.println("LIDAR: " + lidar.getDistanceCm());
+        //System.out.println("LIDAR: " + lidar.getDistanceCm() + " TILT: " + Intake.getInstance().getTiltEnc());
         //System.out.println(elevatorTalon.getSelectedSensorPosition(0));
         if(controller.getBackButtonPressed()) {
             completeManualOverride = !completeManualOverride;
@@ -152,18 +151,18 @@ public class Elevator extends Mechanism {
         updateElevatorPosition();
     }  
     public void drive() {
-        if(topLS.get() && !topLSPressed) {
+        if(!topLS.get() && !topLSPressed) {
             currentElevatorPosition = ElevatorPosition.HIGH;
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             topLSPressed = true;
-        } else if (!topLS.get() && topLSPressed) {
+        } else if (topLS.get() && topLSPressed) {
             topLSPressed = false;
         }
-        if(bottomLS.get() && !bottomLSPressed) {
+        if(!bottomLS.get() && !bottomLSPressed) {
             currentElevatorPosition = ElevatorPosition.FLOOR;
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             topLSPressed = true;
-        } else if (!bottomLS.get() && bottomLSPressed) {
+        } else if (bottomLS.get() && bottomLSPressed) {
             topLSPressed = false;
         }
 
@@ -176,8 +175,8 @@ public class Elevator extends Mechanism {
                 }
             }
         }  
-        if(super.size() > 0 || (target != null && !atTarget())) {
-            if(super.size() > 0 && (target == null || atTarget())) {
+        if(super.size() > 0 || (target != null && !setpointReached)) {
+            if(super.size() > 0 && (target == null || setpointReached)) {
                 target = super.pop();
             } 
             if(super.peek() == null) {
@@ -185,19 +184,19 @@ public class Elevator extends Mechanism {
             }
             switch(target.getObjective()) {
                 case ELEVATORFLOOR:
-                    System.out.println("-----------------------------------------------FLOOR COMMAND QUEUE");
+                    //System.out.println("-----------------------------------------------FLOOR COMMAND QUEUE");
                     commandElevator(ElevatorPosition.FLOOR);
                     break;
                 case ELEVATORLOW:
-                    System.out.println("-----------------------------------------------LOW COMMAND QUEUE");
+                    //System.out.println("-----------------------------------------------LOW COMMAND QUEUE");
                     commandElevator(ElevatorPosition.LOW);
                     break;
                 case ELEVATORMID:
-                    System.out.println("-----------------------------------------------MID COMMAND QUEUE");
+                    //System.out.println("-----------------------------------------------MID COMMAND QUEUE");
                     commandElevator(ElevatorPosition.MID);
                     break;
                 case ELEVATORHIGH:
-                    System.out.println("-----------------------------------------------HIGH COMMAND QUEUE");
+                    //System.out.println("-----------------------------------------------HIGH COMMAND QUEUE");
                     commandElevator(ElevatorPosition.HIGH);
                     break;
                 default:
@@ -235,7 +234,15 @@ public class Elevator extends Mechanism {
     }
 
     public void commandElevator(ElevatorPosition targetPosition) {
-        if(!atTarget() && lidarHealthy) {
+        if(setpointReached) {
+            if(intakeMode == IntakePosition.HATCH)
+                hatchPID.start(Constants.HATCH_ELEVATOR_GAINS);
+            else
+                cargoPID.start(Constants.CARGO_ELEVATOR_GAINS);
+            setpointReached = false;
+        }
+
+        if(!setpointReached && lidarHealthy) {
             double output;
             if(intakeMode == IntakePosition.HATCH) {
                 output = hatchPID.update(lidar.getDistanceCm(), targetPosition.getTargetLidarValue());
@@ -245,9 +252,12 @@ public class Elevator extends Mechanism {
                 setpointReached = Math.abs(cargoPID.getError()) < Constants.LIDAR_THRESHOLD;
             }
             elevatorTalon.set(ControlMode.PercentOutput, output);
-        } /*else if(encoderHealthy && !atTarget()) {
-            elevatorTalon.set(ControlMode.MotionMagic, targetPosition.getTargetEncValue());
-        }*/
+        }
+        if(setpointReached) {
+            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
+            System.out.println("TARGET REACHED: " + targetPosition + " INTAKE: " + intakeMode);
+            return;
+        }
     }
 
     private boolean atTarget() {
@@ -291,8 +301,10 @@ public class Elevator extends Mechanism {
     private void updateElevatorQueue(int buttonPressed) {
         System.out.println("BUTTON PRESSED: " + buttonPressed);
         super.push(new ElevatorCmd(elevatorMap.get(buttonPressed).getElevatorPosition(), elevatorMap.get(buttonPressed).getTargetAzimuth()));
-        if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null)
+        if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null) {
             Intake.getInstance().changeIntakeMode(elevatorMap.get(buttonPressed).getTargetIntakePosition());
+            System.out.println("  INTAKE CMD: " + elevatorMap.get(buttonPressed).getTargetIntakePosition());
+        }
     }
 
     public void updateTalonPIDProfile() {

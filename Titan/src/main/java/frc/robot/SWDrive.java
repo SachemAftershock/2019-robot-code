@@ -101,10 +101,13 @@ class SWDrive extends Mechanism {
         } /*if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
             Climber.getInstance().startClimberSequence();
         } */
-        if(controller.getStickButton(Hand.kRight)) {
+        if(controller.getStickButtonReleased(Hand.kRight)) {
             PistonClimber.getInstance().toggleFrontPistons();
+        }
+        if(controller.getStickButtonReleased(Hand.kLeft)) {
             PistonClimber.getInstance().toggleRearPiston();
         }
+
 
         if(!setpointReached || super.size() > 0) {
             if(super.size() > 0 && (target == null || setpointReached)) {
@@ -267,8 +270,11 @@ class SWDrive extends Mechanism {
           Utilities.normalize(tmp);
           leftSpeed = tmp[0];
           rightSpeed = tmp[1];
+          System.out.println(correctionOffset);
         }
-      
+        if(rightSpeed > 0)
+            rightSpeed *= 0.95;
+        //System.out.println("L: " + leftSpeed + " " +  leftMaster.getSelectedSensorPosition(0) + " R: " + rightSpeed + " " + rightMaster.getSelectedSensorPosition(0));
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 

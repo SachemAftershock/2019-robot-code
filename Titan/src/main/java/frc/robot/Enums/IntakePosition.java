@@ -2,7 +2,7 @@ package frc.robot.Enums;
 import frc.robot.Enums.AutoObjective;
 
 public enum IntakePosition {
-    HATCH(1), CARGO(11), TOP_ROCKET_TILT(7.0);
+    HATCH(0), CARGO(11.75), TOP_ROCKET_TILT(7.0);
 
     private final double targetEncValue;
 
