@@ -20,7 +20,9 @@ class PIDController {
 
     public double update(double current, double setpoint) {
         error = setpoint - current;
-        return this.updateError(error);
+        double output = this.updateError(error);
+        System.out.println("Output: " + output + ", Error: " + error + ", current: " + current + ", setpoint: " + setpoint);
+        return output;
     }
 
     public double updateRotation(double current, double setpoint) {
@@ -35,7 +37,7 @@ class PIDController {
 
         double output = gains[0] * error + gains[1] * integral + gains[2] * derivative;
         prevError = error;
-
+        //System.out.println("P:" + gains[0] + " I:" + gains[1] + " D:" + gains[2]);
         if(Math.abs(output) > 1.0) {
             output /= output < 0 ? -output : output;
         }

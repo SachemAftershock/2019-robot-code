@@ -28,7 +28,7 @@ class SWDrive extends Mechanism {
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
     //private PistonClimber climber;
-    private CircularBuffer tXBuffer;
+    //private CircularBuffer tXBuffer;
 
     private SWDrive() {
         super();
@@ -62,7 +62,7 @@ class SWDrive extends Mechanism {
 		rightMaster.config_IntegralZone(0, 200, 0);
 		rightMaster.configClosedloopRamp(0, 256);
 		rightMaster.configOpenloopRamp(0, 256);
-		rightMaster.configAllowableClosedloopError(0, Constants.LINEAR_EPSILON, 0);
+        rightMaster.configAllowableClosedloopError(0, Constants.LINEAR_EPSILON, 0);        
 
         leftSlave = new TalonSRX(Constants.LEFT_SLAVE_PORT);
         leftSlave.setNeutralMode(NeutralMode.Brake);
@@ -78,7 +78,7 @@ class SWDrive extends Mechanism {
         navx = new AHRS(Port.kMXP);
         controller = new XboxController(Constants.PRIMARY_DRIVER_PORT);
         pid = new PIDController();
-        tXBuffer = new CircularBuffer(10);
+        //tXBuffer = new CircularBuffer(10);
 
         tankEnabled = false;
         setpointReached = true;
@@ -101,6 +101,10 @@ class SWDrive extends Mechanism {
         } /*if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
             Climber.getInstance().startClimberSequence();
         } */
+        if(controller.getStickButton(Hand.kRight)) {
+            PistonClimber.getInstance().toggleFrontPistons();
+            PistonClimber.getInstance().toggleRearPiston();
+        }
 
         if(!setpointReached || super.size() > 0) {
             if(super.size() > 0 && (target == null || setpointReached)) {
@@ -159,7 +163,7 @@ class SWDrive extends Mechanism {
 
         rotateSet = controller.getPOV() >= 0;
         cargoSearch = controller.getBumper(Hand.kLeft) || controller.getBumper(Hand.kRight);
-        tXBuffer.push(Limelight.getTx());
+        //tXBuffer.push(Limelight.getTx());
     }
 
     public void autoDrive(double setpoint) {
@@ -242,8 +246,8 @@ class SWDrive extends Mechanism {
         double leftY = -Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
         double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
 
-        double leftSpeed = leftY + rightX;
-        double rightSpeed = leftY - rightX;   
+        double leftSpeed = leftY + Constants.TURNING_CONSTANT * rightX;
+        double rightSpeed = leftY - Constants.TURNING_CONSTANT * rightX;   
         double[] speeds = {leftSpeed, rightSpeed};
         
         driveMotors(Utilities.normalize(speeds));

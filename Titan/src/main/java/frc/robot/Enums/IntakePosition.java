@@ -2,14 +2,14 @@ package frc.robot.Enums;
 import frc.robot.Enums.AutoObjective;
 
 public enum IntakePosition {
-    HATCH(0), CARGO(10), TOP_ROCKET_TILT(3);
+    HATCH(1), CARGO(11), TOP_ROCKET_TILT(7.0);
 
-    private final int targetEncValue;
+    private final double targetEncValue;
 
-    private IntakePosition(int targetEncValue) {
+    private IntakePosition(double targetEncValue) {
         this.targetEncValue = targetEncValue;
     }
-    public int getTargetEncValue() {
+    public double getTargetEncValue() {
         return targetEncValue;
     }
     public AutoObjective getAutoObjective(IntakePosition position) {

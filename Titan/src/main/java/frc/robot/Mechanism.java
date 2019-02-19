@@ -34,5 +34,6 @@ abstract class Mechanism {
 
     public void flush() {
         commandQueue.clear();
+        target = null;
     }
 }
