@@ -21,7 +21,6 @@ class PIDController {
     public double update(double current, double setpoint) {
         error = setpoint - current;
         double output = this.updateError(error);
-        //System.out.println("kP: " + gains[0] + ", error: " + error + ", output: " + output);
         return output;
     }
 
@@ -37,7 +36,6 @@ class PIDController {
 
         double output = gains[0] * error + gains[1] * integral + gains[2] * derivative;
         prevError = error;
-        //System.out.println("P:" + gains[0] + " I:" + gains[1] + " D:" + gains[2]);
         if(Math.abs(output) > 1.0) {
             output /= output < 0 ? -output : output;
         }

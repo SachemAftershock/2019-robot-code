@@ -8,7 +8,6 @@ import com.revrobotics.CANPIDController;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import com.revrobotics.ControlType;
 
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
@@ -125,7 +124,7 @@ public class Intake extends Mechanism {
         if(controller.getStartButtonPressed()) {
             super.flush();
         }
-
+        //TODO: Test if this works, never got to try this on Bag & Tag Day
         if(!cargoButton.get() && !cargoButtonPressed) {
             rightArm.set(ControlMode.PercentOutput, 0);
             cargoButtonPressed = true;
@@ -146,16 +145,8 @@ public class Intake extends Mechanism {
         if(controller.getBButtonReleased()) {
             super.push(new IntakeCmd(AutoObjective.SHOOTHATCH, -1));
         }
-        if(controller.getAButtonPressed()) {
-            if(leftHatchPistons.get() == Value.kForward) {
-                leftHatchPistons.set(Value.kReverse);
-                rightHatchPistons.set(Value.kReverse);
-            } else {
-                leftHatchPistons.set(Value.kForward);
-                rightHatchPistons.set(Value.kForward);
-            }
-        }
 
+        //Intake Tilt is now completely manual
         if(/*taskCompleted && */controller.getYButton()) {
             tiltSpark.set(0.3);
             //tiltTalon.set(ControlMode.PercentOutput, 0.5);
@@ -226,23 +217,14 @@ public class Intake extends Mechanism {
                 break;
         }
     }
-
     public void changeIntakeMode(IntakePosition targetPosition) {
         if(taskCompleted) {
             taskCompleted = false;
-            //timeOut = System.currentTimeMillis();
         }
         if(targetPosition != Elevator.getInstance().getIntakePosition()) {
-           // System.out.println("TARGET: " + targetPosition.getTargetEncValue() + " CURRENT: " + tiltEncoder.getPosition() + " ERROR: " + (targetPosition.getTargetEncValue() - tiltEncoder.getPosition()));
-            //output = pid.update(tiltEncoder.getPosition(), targetPosition.getTargetEncValue());
-            //System.out.println("RUNNING--------------------------------");
-            tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition); 
-            //System.out.println("TARGET:" + targetPosition + " TARGET-ENC-VALUE:" + targetPosition.getTargetEncValue() + " " + tiltEncoder.getPosition() + " " + atTarget(targetPosition));
-            //System.out.println("------ERROR:" + (targetPosition.getTargetEncValue() - tiltEncoder.getPosition()));
+            //This shouldn't ever be called, intake tilt is now completely manual
+            //tiltPID.setReference(targetPosition.getTargetEncValue(), ControlType.kPosition); 
         }
-        //System.out.println("ELASPED TIME: " + (System.currentTimeMillis() - timeOut));
-        //System.out.println("OUTPUT: " + output);
-        //System.out.println("AT TARGET:" + atTarget(targetPosition));
         if(atTarget(targetPosition)) {
             Elevator.getInstance().setIntakePosition(targetPosition);
             Elevator.getInstance().updateTalonPIDProfile();
@@ -255,9 +237,6 @@ public class Intake extends Mechanism {
             taskCompleted = true;
             return;
         }
-    }
-    public double getTiltEnc() {
-        return tiltEncoder.getPosition();
     }
 
     //Wrapper Function to check if at Target
@@ -274,6 +253,7 @@ public class Intake extends Mechanism {
     }
 
     public void onDemandTest() {
+        //TODO: Fix this
         /*double prevEncoderCount = tiltSpark.getEncoder().getPosition();
         rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
         Timer.delay(2);

@@ -27,14 +27,9 @@ class SWDrive extends Mechanism {
     private double leftTarget, rightTarget;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
-    //private PistonClimber climber;
-    //private CircularBuffer tXBuffer;
 
     private SWDrive() {
         super();
-
-        //climber = PistonClimber.getInstance();
-
         leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
@@ -97,10 +92,7 @@ class SWDrive extends Mechanism {
         if(controller.getBackButtonReleased()) {
             setpointReached = true;
             super.flush();
-           // Climber.getInstance().flush();
-        } /*if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
-            Climber.getInstance().startClimberSequence();
-        } */
+        } 
         if(controller.getStickButtonReleased(Hand.kLeft)) {
             PistonClimber.getInstance().toggleFrontPistons();
         }
@@ -156,13 +148,6 @@ class SWDrive extends Mechanism {
         if(controller.getYButtonReleased()) {
             antiTiltEnabled = !antiTiltEnabled;
         } 
-        /*if(controller.getBumper(Hand.kRight)) {
-            climber.toggleFrontPistons();
-        }
-        
-        if(controller.getBumper(Hand.kLeft)) {
-            climber.toggleRearPiston();
-        } */
 
         rotateSet = controller.getPOV() >= 0;
         cargoSearch = controller.getBumper(Hand.kLeft) || controller.getBumper(Hand.kRight);
@@ -224,13 +209,6 @@ class SWDrive extends Mechanism {
         return navx.getPitch();
     }
 
-    //This is a really bad way to keep the wheels turning while climbing
-    //I'll fix this later I swear - S
-    /*public void driveForClimbSequence() {
-        antiTiltEnabled = false;
-        driveMotors(Constants.HAB_DRIVE_SPEED, Constants.HAB_DRIVE_SPEED);
-    } */
-
     private void tankDrive() {
         
         double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
@@ -274,7 +252,6 @@ class SWDrive extends Mechanism {
         }
         if(rightSpeed > 0)
             rightSpeed *= 0.95;
-        //System.out.println("L: " + leftSpeed + " " +  leftMaster.getSelectedSensorPosition(0) + " R: " + rightSpeed + " " + rightMaster.getSelectedSensorPosition(0));
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
@@ -283,7 +260,7 @@ class SWDrive extends Mechanism {
         return Math.abs(leftMaster.getSelectedSensorPosition(0) - rightMaster.getSelectedSensorPosition(0));
     }
 
-    public boolean onDemandTest() {
+    public boolean onDemandTest() { //TODO: Fix this
         double prevLeftEncoderCount = leftMaster.getSelectedSensorPosition(0);
         double prevRightEncoderCount = rightMaster.getSelectedSensorPosition(0);
         boolean leftHealthy = true, rightHealthy = true;

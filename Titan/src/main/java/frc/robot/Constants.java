@@ -1,6 +1,6 @@
 package frc.robot;
 
-public class Constants {
+public class Constants { //TODO: Clean up
     public static final int PRIMARY_DRIVER_PORT = 0;
     public static final int SECONDARY_DRIVER_PORT = 1;
     public static final int BUTTON_BOX_PORT = 2;
@@ -28,7 +28,6 @@ public class Constants {
     public static final int RIGHT_INTAKE_PORT = 6;
     public static final int TILT_MOTOR_PORT = 7;
 
-    //TODO: Finalize all Numbers Below
     public static final double INTAKE_SPEED = 0.6;
     public static final double[] TILT_GAINS = {0.01, 0.0, 0.0, 0.0, 0.0};
     public static final int LEFT_HATCH_SOLENOID_FORWARD = 4;
