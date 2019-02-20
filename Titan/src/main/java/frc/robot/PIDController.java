@@ -21,7 +21,7 @@ class PIDController {
     public double update(double current, double setpoint) {
         error = setpoint - current;
         double output = this.updateError(error);
-        //System.out.println("Output: " + output + ", Error: " + error + ", current: " + current + ", setpoint: " + setpoint + ", derivative: " + derivative);
+        //System.out.println("kP: " + gains[0] + ", error: " + error + ", output: " + output);
         return output;
     }
 

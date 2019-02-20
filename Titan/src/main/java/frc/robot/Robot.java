@@ -5,6 +5,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import frc.robot.Limelight.CameraMode;
 
 public class Robot extends TimedRobot {
 
@@ -52,6 +53,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     driveBase.zero();
+    Limelight.setCameraMode(CameraMode.eDriver);
   }
 
   @Override

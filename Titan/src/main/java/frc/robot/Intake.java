@@ -89,14 +89,13 @@ public class Intake extends Mechanism {
 
             switch(target.getObjective()) {
                 case TILTCARGO:
-                    changeIntakeMode(IntakePosition.CARGO);
+                    //changeIntakeMode(IntakePosition.CARGO);
                     break;
                 case TILTHATCH:
-                    changeIntakeMode(IntakePosition.HATCH);
-
+                    //changeIntakeMode(IntakePosition.HATCH);
                     break;
                 case TILTTOPROCKET:
-                    changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
+                    //changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
                     break;
                 case SHOOTCARGO:
                     autoShootCargo();
@@ -126,21 +125,18 @@ public class Intake extends Mechanism {
         if(controller.getStartButtonPressed()) {
             super.flush();
         }
-        if(controller.getStickButton(Hand.kRight)) {
-            tiltEncoder.setPosition(0.0);
-        }
+
         if(!cargoButton.get() && !cargoButtonPressed) {
             rightArm.set(ControlMode.PercentOutput, 0);
-            super.push(new IntakeCmd(AutoObjective.TILTHATCH, -1));
             cargoButtonPressed = true;
         } else {
             cargoButtonPressed = false;
         }
         
-        if(controller.getBumper(Hand.kLeft) && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
+        if(controller.getBumper(Hand.kLeft) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
             rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
         } 
-        else if(controller.getBumper(Hand.kRight) && (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)) {
+        else if(controller.getBumper(Hand.kRight) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
         } 
         else {
@@ -161,13 +157,13 @@ public class Intake extends Mechanism {
         }
 
         if(/*taskCompleted && */controller.getYButton()) {
-            tiltSpark.set(0.35);
+            tiltSpark.set(0.3);
             //tiltTalon.set(ControlMode.PercentOutput, 0.5);
         } else if(/*taskCompleted && */controller.getXButton()) {
-            tiltSpark.set(-0.35);
+            tiltSpark.set(-0.3);
             //tiltTalon.set(ControlMode.PercentOutput, -0.5);
         }
-        else if(taskCompleted) {
+        else /*if(taskCompleted)*/ {
             //tiltTalon.set(ControlMode.PercentOutput,0.0);
             tiltSpark.set(0.0);
         }
@@ -220,7 +216,7 @@ public class Intake extends Mechanism {
                 autoMode = Mode.WAITUNTILFINISHED;
                 break;
             case WAITUNTILFINISHED:
-                if(System.currentTimeMillis() - startTime >= 1000) {
+                if(System.currentTimeMillis() - startTime >= 750) {
                     leftHatchPistons.set(Value.kReverse);
                     rightHatchPistons.set(Value.kReverse);
                     autoMode = Mode.SETUP;
@@ -248,13 +244,12 @@ public class Intake extends Mechanism {
         //System.out.println("OUTPUT: " + output);
         //System.out.println("AT TARGET:" + atTarget(targetPosition));
         if(atTarget(targetPosition)) {
-            System.out.println("REACHED TILT TARGET");
             Elevator.getInstance().setIntakePosition(targetPosition);
             Elevator.getInstance().updateTalonPIDProfile();
             taskCompleted = true;
             return;
         }
-        if(System.currentTimeMillis() - timeout >= 500) {
+        if(System.currentTimeMillis() - timeout >= 1000) {
             System.out.println("TIMED OUT");
             Elevator.getInstance().setIntakePosition(targetPosition);
             taskCompleted = true;

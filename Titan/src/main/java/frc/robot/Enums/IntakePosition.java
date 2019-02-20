@@ -12,7 +12,7 @@ public enum IntakePosition {
     public double getTargetEncValue() {
         return targetEncValue;
     }
-    public AutoObjective getAutoObjective(IntakePosition position) {
+    public AutoObjective getIntakeCmd(IntakePosition position) {
         if(position == HATCH) return AutoObjective.TILTHATCH;
         if(position == CARGO) return AutoObjective.TILTCARGO;
         if(position == TOP_ROCKET_TILT) return AutoObjective.TILTTOPROCKET;

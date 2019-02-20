@@ -3,6 +3,7 @@ package frc.robot;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.ctre.phoenix.Util;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
@@ -46,7 +47,7 @@ public class Elevator extends Mechanism {
         intake = Intake.getInstance();
         currentElevatorPosition = ElevatorPosition.FLOOR;
         //targetPosition = ElevatorPosition.FLOOR;
-        intakeMode = IntakePosition.CARGO;
+        intakeMode = IntakePosition.HATCH;
         buttonBox = new Joystick(Constants.BUTTON_BOX_PORT);
         lidar = new LIDAR(new DigitalInput(Constants.ELEVATOR_LIDAR_PORT));
         elevatorTalon = new TalonSRX(Constants.ELEVATOR_TALON_PORT);
@@ -130,7 +131,11 @@ public class Elevator extends Mechanism {
         //manualSpeedInput = (Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) - Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1));
         //elevatorTalon.set(ControlMode.PercentOutput, manualSpeedInput);
         if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
+            elevatorTalon.set(ControlMode.PercentOutput, -Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
+        } else if(Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.5) != 0) {
+            elevatorTalon.set(ControlMode.PercentOutput, 0.1);
+        } else if(setpointReached && (Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0)) {
+            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
         }
         //elevatorTalon.set(ControlMode.PercentOutput, Utilities.deadband(controller.getTriggerAxis(Hand.kRight), .1) - Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1));
         
@@ -151,7 +156,7 @@ public class Elevator extends Mechanism {
         updateElevatorPosition();
     }  
     public void drive() {
-        if(!topLS.get() && !topLSPressed) {
+        /*if(!topLS.get() && !topLSPressed) {
             currentElevatorPosition = ElevatorPosition.HIGH;
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             topLSPressed = true;
@@ -164,7 +169,7 @@ public class Elevator extends Mechanism {
             topLSPressed = true;
         } else if (bottomLS.get() && bottomLSPressed) {
             topLSPressed = false;
-        }
+        }*/
 
         for(int id : buttonID) {
             if(buttonBox.getRawButton(id)) {
@@ -217,14 +222,17 @@ public class Elevator extends Mechanism {
 
         if(intakeMode == IntakePosition.HATCH && hatchModeEnabled && intakeMode != IntakePosition.CARGO && !hatchModePrev) {
             if(currentElevatorPosition == ElevatorPosition.HIGH) {
-                intake.changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
+                //intake.changeIntakeMode(IntakePosition.TOP_ROCKET_TILT);
+                intakeMode = IntakePosition.CARGO;
             } else {
-                intake.push(new IntakeCmd(AutoObjective.TILTCARGO, -1));
+                //intake.push(new IntakeCmd(AutoObjective.TILTCARGO, -1));
                 hatchModePrev = true;
+                intakeMode = IntakePosition.CARGO;
                 
             }
         } else if (!hatchModeEnabled && intakeMode != IntakePosition.HATCH && !hatchModePrev) {
-            intake.push(new IntakeCmd(AutoObjective.TILTHATCH, -1));
+            //intake.push(new IntakeCmd(AutoObjective.TILTHATCH, -1));
+            intakeMode = IntakePosition.HATCH;
             hatchModePrev = true;
         }
 
@@ -300,11 +308,16 @@ public class Elevator extends Mechanism {
 
     private void updateElevatorQueue(int buttonPressed) {
         System.out.println("BUTTON PRESSED: " + buttonPressed);
-        super.push(new ElevatorCmd(elevatorMap.get(buttonPressed).getElevatorPosition(), elevatorMap.get(buttonPressed).getTargetAzimuth()));
-        if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null) {
-            Intake.getInstance().changeIntakeMode(elevatorMap.get(buttonPressed).getTargetIntakePosition());
-            System.out.println("  INTAKE CMD: " + elevatorMap.get(buttonPressed).getTargetIntakePosition());
+        if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null && elevatorMap.get(buttonPressed).getTargetIntakePosition() != intakeMode) {
+            intakeMode = elevatorMap.get(buttonPressed).getTargetIntakePosition();
+            System.out.println("  INTAKE CHANGED" + intakeMode);
         }
+        super.push(new ElevatorCmd(elevatorMap.get(buttonPressed).getElevatorPosition(), elevatorMap.get(buttonPressed).getTargetAzimuth()));
+        //if(elevatorMap.get(buttonPressed).getTargetIntakePosition() != null) {
+            //Intake.getInstance().push(new IntakeCmd(elevatorMap.get(buttonPressed).getTargetIntakePosition().getIntakeCmd(elevatorMap.get(buttonPressed).getTargetIntakePosition()),-1));
+            //Intake.getInstance().changeIntakeMode(elevatorMap.get(buttonPressed).getTargetIntakePosition());
+            //System.out.println("  INTAKE CMD: " + elevatorMap.get(buttonPressed).getTargetIntakePosition());
+        //}
     }
 
     public void updateTalonPIDProfile() {

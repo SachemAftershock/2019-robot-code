@@ -30,7 +30,7 @@ public class Constants {
 
     //TODO: Finalize all Numbers Below
     public static final double INTAKE_SPEED = 0.6;
-    public static final double[] TILT_GAINS = {0.07, 0.0, 0.05, 0.0, 0.0};
+    public static final double[] TILT_GAINS = {0.01, 0.0, 0.0, 0.0, 0.0};
     public static final int LEFT_HATCH_SOLENOID_FORWARD = 4;
     public static final int LEFT_HATCH_SOLENOID_REVERSE = 5;
     public static final int RIGHT_HATCH_SOLENOID_FORWARD = 6;
@@ -43,8 +43,8 @@ public class Constants {
     public static final int ELEVATOR_LIDAR_PORT = 6;
     public static final int TOP_LS_PORT = 4;
     public static final int BOTTOM_LS_PORT = 5;
-    public static final double[] HATCH_ELEVATOR_GAINS = {0.045, 0.1, 0.055};
-    public static final double[] CARGO_ELEVATOR_GAINS = {0.05, 0.001, 0.00001};
+    public static final double[] HATCH_ELEVATOR_GAINS = {0.04, 0.0, 0.05};
+    public static final double[] CARGO_ELEVATOR_GAINS = {0.04, 0.0, 0.05};
     public static final int ELEVATOR_ENC_THRESHOLD = 75;
     public static final double LIDAR_THRESHOLD = 4.0;
 

@@ -101,10 +101,10 @@ class SWDrive extends Mechanism {
         } /*if(controller.getBumper(Hand.kRight) && Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1) > 0) {
             Climber.getInstance().startClimberSequence();
         } */
-        if(controller.getStickButtonReleased(Hand.kRight)) {
+        if(controller.getStickButtonReleased(Hand.kLeft)) {
             PistonClimber.getInstance().toggleFrontPistons();
         }
-        if(controller.getStickButtonReleased(Hand.kLeft)) {
+        if(controller.getStickButtonReleased(Hand.kRight)) {
             PistonClimber.getInstance().toggleRearPiston();
         }
 
@@ -233,8 +233,8 @@ class SWDrive extends Mechanism {
 
     private void tankDrive() {
         
-        double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.1);
-        double rightY = Utilities.deadband(controller.getY(Hand.kRight), 0.1);
+        double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
+        double rightY = Utilities.deadband(controller.getY(Hand.kRight), 0.2);
         double leftTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1);
         double rightTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.1);
 
