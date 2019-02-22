@@ -4,13 +4,12 @@ import edu.wpi.first.wpilibj.Timer;
 
 class PIDController {
 
-    private double setpoint, integral, derivative, error, prevError;
+    private double integral, derivative, error, prevError;
     private double[] gains;
     private Timer timer;
 
     public PIDController() {
         gains = new double[3];
-        setpoint = 0.0;
         integral = 0.0;
         derivative = 0.0;
         error = 0.0;
@@ -19,19 +18,24 @@ class PIDController {
         timer = new Timer();
     }
 
-    public double update(double current) {
+    public double update(double current, double setpoint) {
         error = setpoint - current;
+        double output = this.updateError(error);
+        return output;
+    }
+
+    public double updateRotation(double current, double setpoint) {
+        error = Utilities.rotationalError(current, setpoint);
         return this.updateError(error);
     }
 
-    public double updateError(double error) {
+    private double updateError(double error) {
         this.error = error;
         integral += error;
         derivative = error - prevError;
 
         double output = gains[0] * error + gains[1] * integral + gains[2] * derivative;
         prevError = error;
-
         if(Math.abs(output) > 1.0) {
             output /= output < 0 ? -output : output;
         }
@@ -39,9 +43,8 @@ class PIDController {
         return output;
     }
 
-    public void start(double[] gains, double setpoint) {
+    public void start(double[] gains) {
         this.gains = gains;
-        this.setpoint = setpoint;
         integral = 0.0;
         derivative = 0.0;
         error = 0.0;

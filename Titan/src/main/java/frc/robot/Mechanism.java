@@ -3,6 +3,8 @@ package frc.robot;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import frc.robot.Commands.BaseCmd;
+
 abstract class Mechanism {
     private Queue<BaseCmd> commandQueue;
     BaseCmd target;
@@ -32,5 +34,6 @@ abstract class Mechanism {
 
     public void flush() {
         commandQueue.clear();
+        target = null;
     }
 }
