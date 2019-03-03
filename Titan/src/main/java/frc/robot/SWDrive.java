@@ -4,27 +4,27 @@ import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.I2C.Port;
-import edu.wpi.first.wpilibj.XboxController; 
-
-import frc.robot.Commands.RotateCmd;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.CargoSearchCmd;
-
+import frc.robot.Commands.RotateCmd;
 
 class SWDrive extends Mechanism {
 
-    private TalonSRX leftMaster, rightMaster, leftSlave, rightSlave;
+    private TalonSRX leftMaster, rightMaster;
+    private VictorSPX leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
     private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled, cargoSearch;
     private AHRS navx;
-    private double leftTarget, rightTarget;
+    private double leftTarget, rightTarget, lacc, racc;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
 
@@ -59,13 +59,13 @@ class SWDrive extends Mechanism {
 		rightMaster.configOpenloopRamp(0, 256);
         rightMaster.configAllowableClosedloopError(0, Constants.LINEAR_EPSILON, 0);        
 
-        leftSlave = new TalonSRX(Constants.LEFT_SLAVE_PORT);
+        leftSlave = new VictorSPX(Constants.LEFT_SLAVE_PORT);
         leftSlave.setNeutralMode(NeutralMode.Brake);
         leftSlave.follow(leftMaster);
 
-        rightSlave = new TalonSRX(Constants.RIGHT_SLAVE_PORT);
+        rightSlave = new VictorSPX(Constants.RIGHT_SLAVE_PORT);
         rightSlave.setNeutralMode(NeutralMode.Brake);
-        rightSlave.setInverted(true);
+        //rightSlave.setInverted(true);
         rightSlave.follow(rightMaster);
 
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
@@ -82,6 +82,8 @@ class SWDrive extends Mechanism {
         cargoSearch = false;
         leftTarget = 0;
         rightTarget = 0;
+        lacc = 0;
+        racc = 0;
     }
 
     public static SWDrive getInstance() {
@@ -225,7 +227,7 @@ class SWDrive extends Mechanism {
 
     private void arcadeDrive() {
         double leftY = -Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
-        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.1);
+        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.2);
 
         double leftSpeed = leftY + Constants.TURNING_CONSTANT * rightX;
         double rightSpeed = leftY - Constants.TURNING_CONSTANT * rightX;   
@@ -241,6 +243,13 @@ class SWDrive extends Mechanism {
     private void driveMotors(double leftSpeed, double rightSpeed) {
         float pitch = navx.getPitch();
       
+        if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
+            leftSpeed = lacc * Constants.DECELERATION_CONSTANT;
+            rightSpeed = racc * Constants.DECELERATION_CONSTANT;
+        }
+        racc = rightSpeed;
+        lacc = leftSpeed;
+
         if (antiTiltEnabled && Math.abs(pitch) > Constants.TILT_EPSILON && Math.abs(pitch) < 45) {
           double slope = (0.4 - 0.1) / (45 - Constants.TILT_EPSILON);
           double correctionOffset = slope * (pitch - Constants.TILT_EPSILON);
@@ -250,14 +259,17 @@ class SWDrive extends Mechanism {
           rightSpeed = tmp[1];
           System.out.println(correctionOffset);
         }
-        if(rightSpeed > 0)
-            rightSpeed *= 0.95;
+        
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
     
     private double getEncoderDiff() {
         return Math.abs(leftMaster.getSelectedSensorPosition(0) - rightMaster.getSelectedSensorPosition(0));
+    }
+
+    public void rumbleController(double length) {
+        (new JoystickRumble(controller, 1, length)).start();
     }
 
     public boolean onDemandTest() { //TODO: Fix this

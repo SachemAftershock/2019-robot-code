@@ -15,7 +15,7 @@ public class Constants { //TODO: Clean up
 
     public static final double[] LINEAR_GAINS = {0.33, 0.0, 10};
     public static final double[] ROTATE_GAINS = {0.024, 0.0001, 0.2};
-    public static final double TURNING_CONSTANT = 1.0;
+    public static final double TURNING_CONSTANT = 0.9;
     public static final double ROTATE_EPSILON = 3;
     public static final int LINEAR_EPSILON = 200;
     public static final int TILT_EPSILON = 15;
@@ -42,8 +42,8 @@ public class Constants { //TODO: Clean up
     public static final int ELEVATOR_LIDAR_PORT = 6;
     public static final int TOP_LS_PORT = 4;
     public static final int BOTTOM_LS_PORT = 5;
-    public static final double[] HATCH_ELEVATOR_GAINS = {0.04, 0.0, 0.05};
-    public static final double[] CARGO_ELEVATOR_GAINS = {0.04, 0.0, 0.05};
+    public static final double[] HATCH_ELEVATOR_GAINS = {0.03, 0.0, 0.05};
+    public static final double[] CARGO_ELEVATOR_GAINS = {0.03, 0.0, 0.05};
     public static final int ELEVATOR_ENC_THRESHOLD = 75;
     public static final double LIDAR_THRESHOLD = 4.0;
 
@@ -80,4 +80,6 @@ public class Constants { //TODO: Clean up
 
     public static final double CARGO_SEARCH_ROTATE_SPEED = 0.5;
     public static final double CARGO_SEARCH_EPSILON = 3;
+
+    public static final double DECELERATION_CONSTANT = 0.8;
 }
