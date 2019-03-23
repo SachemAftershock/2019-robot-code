@@ -3,21 +3,18 @@ package frc.robot;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.ctre.phoenix.Util;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.ElevatorCmd;
-import frc.robot.Commands.IntakeCmd;
-import frc.robot.Enums.AutoObjective;
 import frc.robot.Enums.ElevatorPosition;
 import frc.robot.Enums.IntakePosition;
 
@@ -31,7 +28,7 @@ public class Elevator extends Mechanism {
     private LIDAR lidar;
     private int[] buttonID;
     private frc.robot.PIDController cargoPID, hatchPID;
-    private boolean completeManualOverride, hatchModeEnabled, topLSPressed, bottomLSPressed, setpointReached, firstRun, lidarHealthy;
+    private boolean completeManualOverride, hatchModeEnabled , topLSPressed, bottomLSPressed, setpointReached, firstRun, lidarHealthy;
     private int idOfLastButtonPressed;
     private boolean hatchModePrev = false;
 
@@ -114,22 +111,19 @@ public class Elevator extends Mechanism {
         }
 
         if(controller.getBackButtonPressed()) {
-            completeManualOverride = !completeManualOverride;
-            (new JoystickRumble(controller, 1)).start();
+            //completeManualOverride = !completeManualOverride;
+            (new JoystickRumble(controller, 1, 2.0)).start();
         } 
         if(controller.getStartButtonReleased()) {
             super.flush();
-            (new JoystickRumble(controller, 1)).start();
+            (new JoystickRumble(controller, 1, 0.5)).start();
         } 
-        if(controller.getStickButton(Hand.kRight)) {
-            elevatorTalon.setSelectedSensorPosition(0);
-        }
 
         if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, -Utilities.deadband(controller.getY(Hand.kLeft), 0.1));
+            elevatorTalon.set(ControlMode.PercentOutput, -(Utilities.deadband(controller.getY(Hand.kLeft), 0.2) * 0.65));
         } else if(Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, 0.1); //TODO: Tweak this value to nudge it up maybe?
-        } else if(setpointReached && (Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0)) {
+            elevatorTalon.set(ControlMode.PercentOutput, 0.3); //TODO: Tweak this value to nudge it up maybe?
+        } else if(setpointReached && (Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) == 0)) {
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
         }
         
@@ -142,11 +136,11 @@ public class Elevator extends Mechanism {
         }  
         System.out.println("-------TARGET BUMPER:" + targetPosition);*/
 
-        if(!(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) > 0)) {
+        if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) == 0) {
             drive();
         }
-        checkLIDARHealth();
-        updateElevatorPosition();
+        //checkLIDARHealth();
+        //updateElevatorPosition();
     }  
     public void drive() {
         /*if(!topLS.get() && !topLSPressed) { //TODO: Reimplement & Test LS Logic
@@ -244,7 +238,6 @@ public class Elevator extends Mechanism {
         }
         if(setpointReached) {
             elevatorTalon.set(ControlMode.PercentOutput, 0.0);
-            //System.out.println("TARGET REACHED: " + targetPosition + " INTAKE: " + intakeMode);
             return;
         }
     }
@@ -298,30 +291,11 @@ public class Elevator extends Mechanism {
     }
     
 
-    //public void onDemandTest() {
-        //TODO: Fix this
-        /*double prevEncoderCount = elevatorTalon.getSelectedSensorPosition(1);
+    public void onDemandTest() {
         commandElevator(ElevatorPosition.FLOOR);
-        Timer.delay(7);
-        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
-            DriverStation.reportWarning("ELEVATOR ENCODER ERROR", false);
-            System.out.println("   DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
-        }
+        Timer.delay(2);
         commandElevator(ElevatorPosition.MID);
-        Timer.delay(7);
-        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
-            DriverStation.reportWarning("ELEVATOR ENCODER ERROR \n " + "    DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)), false);
-            System.out.println("    DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
-        }
-        commandElevator(ElevatorPosition.LOW);
-        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) < 10) {
-            DriverStation.reportWarning("ELEVATOR ENCODER ERROR", false);
-            System.out.println("    DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));
-        }
-        Timer.delay(4);
-        if(Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)) == 0) {
-            DriverStation.reportWarning("ELEVATOR ENCODER ERROR", false);
-            System.out.println("   DIFF:" + Math.abs(prevEncoderCount - elevatorTalon.getSelectedSensorPosition(1)));*/
-        //}
-   // }
+        Timer.delay(2);
+        commandElevator(ElevatorPosition.FLOOR);
+    }
 }

@@ -52,8 +52,12 @@ public class Intake extends Mechanism {
         cargoButton = new DigitalInput(Constants.CARGO_BUTTON_PORT);
         tiltSpark.setIdleMode(IdleMode.kBrake);
 
-        leftHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
-        rightHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
+        //leftHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
+        //rightHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
+        leftHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
+        rightHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
+
+
 
         //leftHatchPistons = new DoubleSolenoid(0,Constants.LEFT_HATCH_SOLENOID_FORWARD, Constants.LEFT_HATCH_SOLENOID_REVERSE);
         //rightHatchPistons = new DoubleSolenoid(0,Constants.RIGHT_HATCH_SOLENOID_FORWARD, Constants.RIGHT_HATCH_SOLENOID_REVERSE);
@@ -115,10 +119,6 @@ public class Intake extends Mechanism {
         //System.out.println(tiltEncoder.getPosition());
         if(firstTime) {
             super.flush();
-            System.out.println("FLUSHED");
-            target = new IntakeCmd(AutoObjective.TILTHATCH, -1);
-            leftHatchPistons.set(Value.kReverse);
-            rightHatchPistons.set(Value.kReverse);
             firstTime = false;
         }
         if(controller.getStartButtonPressed()) {
@@ -148,16 +148,24 @@ public class Intake extends Mechanism {
 
         //Intake Tilt is now completely manual
         if(/*taskCompleted && */controller.getYButton()) {
-            tiltSpark.set(0.3);
+            tiltSpark.set(0.4);
             //tiltTalon.set(ControlMode.PercentOutput, 0.5);
         } else if(/*taskCompleted && */controller.getXButton()) {
-            tiltSpark.set(-0.3);
+            tiltSpark.set(-0.23);
             //tiltTalon.set(ControlMode.PercentOutput, -0.5);
         }
         else /*if(taskCompleted)*/ {
             //tiltTalon.set(ControlMode.PercentOutput,0.0);
             tiltSpark.set(0.0);
         }
+        if(controller.getAButtonPressed()) {
+            if(rightHatchPistons.get() == Value.kForward) {
+                rightHatchPistons.set(Value.kReverse);
+            } else {
+                rightHatchPistons.set(Value.kForward);
+            }
+        }
+        
         drive();
     }
     
@@ -203,13 +211,14 @@ public class Intake extends Mechanism {
                 taskCompleted = false;
                 startTime = System.currentTimeMillis();
                 leftHatchPistons.set(Value.kForward);
-                rightHatchPistons.set(Value.kForward);
+                //rightHatchPistons.set(Value.kForward);
+                SWDrive.getInstance().rumbleController(0.75);
                 autoMode = Mode.WAITUNTILFINISHED;
                 break;
             case WAITUNTILFINISHED:
                 if(System.currentTimeMillis() - startTime >= 750) {
                     leftHatchPistons.set(Value.kReverse);
-                    rightHatchPistons.set(Value.kReverse);
+                    //rightHatchPistons.set(Value.kReverse);
                     autoMode = Mode.SETUP;
                     taskCompleted = true;
                     return;
