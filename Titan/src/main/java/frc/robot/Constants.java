@@ -28,12 +28,14 @@ public class Constants { //TODO: Clean up
     public static final int RIGHT_INTAKE_PORT = 6;
     public static final int TILT_MOTOR_PORT = 7;
 
-    public static final double INTAKE_SPEED = 0.6;
+    public static final double INTAKE_SPEED = 1.0;
     public static final double[] TILT_GAINS = {0.01, 0.0, 0.0, 0.0, 0.0};
     public static final int LEFT_HATCH_SOLENOID_FORWARD = 4;
     public static final int LEFT_HATCH_SOLENOID_REVERSE = 5;
     public static final int RIGHT_HATCH_SOLENOID_FORWARD = 6;
     public static final int RIGHT_HATCH_SOLENOID_REVERSE = 7;
+    public static final int HATCH_GRABBER_SOLENOID_FORWARD = 2;
+    public static final int HATCH_GRABBER_SOLENOID_REVERSE = 3;
     public static final int INTAKE_MODE_TOGGLE_BUTTON = 15;
     public static final int CARGO_BUTTON_PORT = 3;
     public static final double TILT_THRESHOLD = 0.35;
@@ -73,10 +75,10 @@ public class Constants { //TODO: Clean up
     public static final double HAB_DRIVE_OFF_DISTANCE = -1.0;
     */
     public static final int CLIMBER_PCM_PORT = 1;
-    public static final int CLIMBER_FRONT_PISTON_FORWARD_PORT = 0;
-    public static final int CLIMBER_FRONT_PISTON_REVERSE_PORT = 3;
-    public static final int CLIMBER_REAR_PISTON_FORWARD_PORT = 2;
-    public static final int CLIMBER_REAR_PISTON_REVERSE_PORT = 1;
+    public static final int CLIMBER_FRONT_PISTON_FORWARD_PORT = 1;
+    public static final int CLIMBER_FRONT_PISTON_REVERSE_PORT = 2;
+    public static final int CLIMBER_REAR_PISTON_FORWARD_PORT = 0;
+    public static final int CLIMBER_REAR_PISTON_REVERSE_PORT = 3;
 
     public static final double CARGO_SEARCH_ROTATE_SPEED = 0.5;
     public static final double CARGO_SEARCH_EPSILON = 3;

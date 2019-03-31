@@ -14,8 +14,10 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.XboxController;
+import frc.robot.Commands.ElevatorCmd;
 import frc.robot.Commands.IntakeCmd;
 import frc.robot.Enums.AutoObjective;
+import frc.robot.Enums.ElevatorPosition;
 import frc.robot.Enums.IntakePosition;
 
 public class Intake extends Mechanism {
@@ -27,9 +29,9 @@ public class Intake extends Mechanism {
     //private PIDController pid;
     private CANEncoder tiltEncoder;
     private DigitalInput cargoButton;
-    private DoubleSolenoid leftHatchPistons, rightHatchPistons;
+    private DoubleSolenoid leftHatchPistons, rightHatchPistons, hatchGrabber;
     private Mode autoMode;
-    private enum Mode {SETUP, WAITUNTILFINISHED};
+    private enum Mode {SETUP, WAITUNTILGRABRELEASED, WAITUNTILFINISHED};
     private long startTime, timeout;
     private boolean cargoButtonPressed, taskCompleted, firstTime;
 
@@ -54,8 +56,9 @@ public class Intake extends Mechanism {
 
         //leftHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
         //rightHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
-        leftHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_REVERSE, Constants.RIGHT_HATCH_SOLENOID_FORWARD);
+        leftHatchPistons = new DoubleSolenoid(0, Constants.RIGHT_HATCH_SOLENOID_FORWARD,  Constants.RIGHT_HATCH_SOLENOID_REVERSE);
         rightHatchPistons = new DoubleSolenoid(0, Constants.LEFT_HATCH_SOLENOID_REVERSE, Constants.LEFT_HATCH_SOLENOID_FORWARD);
+        hatchGrabber = new DoubleSolenoid(0,  Constants.HATCH_GRABBER_SOLENOID_FORWARD, Constants.HATCH_GRABBER_SOLENOID_REVERSE);
 
 
 
@@ -120,44 +123,56 @@ public class Intake extends Mechanism {
         if(firstTime) {
             super.flush();
             firstTime = false;
+            hatchGrabber.set(Value.kForward);
+            rightHatchPistons.set(Value.kForward
+            );
+            leftHatchPistons.set(Value.kReverse);
         }
+
+        if(hatchGrabber.get() == Value.kForward) {
+            (new JoystickRumble(controller, 1, 0.1)).start();;
+        }
+
+        
         if(controller.getStartButtonPressed()) {
             super.flush();
         }
-        //TODO: Test if this works, never got to try this on Bag & Tag Day
-        if(!cargoButton.get() && !cargoButtonPressed) {
-            rightArm.set(ControlMode.PercentOutput, 0);
-            cargoButtonPressed = true;
-        } else {
-            cargoButtonPressed = false;
-        }
         
-        if(controller.getBumper(Hand.kLeft) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
-            rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
-        } 
-        else if(controller.getBumper(Hand.kRight) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
+        if(controller.getBumper(Hand.kRight) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
             rightArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
+            leftArm.set(ControlMode.PercentOutput, -Constants.INTAKE_SPEED);
+        } 
+        else if(controller.getBumper(Hand.kLeft) /*&& (Elevator.getInstance().getIntakePosition() == IntakePosition.CARGO || Elevator.getInstance().getIntakePosition() == IntakePosition.TOP_ROCKET_TILT)*/) {
+            rightArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
+            leftArm.set(ControlMode.PercentOutput, Constants.INTAKE_SPEED);
         } 
         else {
             rightArm.set(ControlMode.PercentOutput, 0);
+            leftArm.set(ControlMode.PercentOutput, 0);
         }
-        //TODO: Double Check this below
+
         if(controller.getBButtonReleased()) {
             super.push(new IntakeCmd(AutoObjective.SHOOTHATCH, -1));
         }
 
-        //Intake Tilt is now completely manual
         if(/*taskCompleted && */controller.getYButton()) {
-            tiltSpark.set(0.4);
+            if(Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.5) == 0)
+                tiltSpark.set(calculateTiltVelocity(true));
+            else
+                tiltSpark.set(0.65);
             //tiltTalon.set(ControlMode.PercentOutput, 0.5);
         } else if(/*taskCompleted && */controller.getXButton()) {
-            tiltSpark.set(-0.23);
+            if(Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.5) == 0)
+                tiltSpark.set(calculateTiltVelocity(false));
+            else
+                tiltSpark.set(-0.23);
             //tiltTalon.set(ControlMode.PercentOutput, -0.5);
         }
         else /*if(taskCompleted)*/ {
             //tiltTalon.set(ControlMode.PercentOutput,0.0);
             tiltSpark.set(0.0);
         }
+        
         if(controller.getAButtonPressed()) {
             if(rightHatchPistons.get() == Value.kForward) {
                 rightHatchPistons.set(Value.kReverse);
@@ -166,8 +181,29 @@ public class Intake extends Mechanism {
             }
         }
         
+        if(controller.getStickButtonReleased(Hand.kRight)) {
+            if(hatchGrabber.get() == Value.kForward) {
+                hatchGrabber.set(Value.kReverse);
+            } else {
+                hatchGrabber.set(Value.kForward);
+            }
+        }
+        
+        if(controller.getStickButton(Hand.kLeft))
+         {
+            tiltEncoder.setPosition(0);
+        }
+
         drive();
     }
+
+    public double calculateTiltVelocity(boolean commandedUp) {
+        if(commandedUp) {
+            return 0.5 * Math.sin(tiltEncoder.getPosition() * (Math.PI/10)) + 0.1;
+        } else {
+            return -0.3 * Math.sin(tiltEncoder.getPosition() / 10) - 0.1;
+        }
+    } 
     
     public void autoShootCargo() {
         switch(autoMode) {
@@ -210,10 +246,16 @@ public class Intake extends Mechanism {
             case SETUP:
                 taskCompleted = false;
                 startTime = System.currentTimeMillis();
-                leftHatchPistons.set(Value.kForward);
-                //rightHatchPistons.set(Value.kForward);
+                if(hatchGrabber.get() == Value.kForward)
+                    hatchGrabber.set(Value.kReverse);
                 SWDrive.getInstance().rumbleController(0.75);
-                autoMode = Mode.WAITUNTILFINISHED;
+                autoMode = Mode.WAITUNTILGRABRELEASED;
+                break;
+            case WAITUNTILGRABRELEASED:
+                if(System.currentTimeMillis() - startTime >= 200) {
+                    leftHatchPistons.set(Value.kForward);
+                    autoMode = Mode.WAITUNTILFINISHED;
+                }
                 break;
             case WAITUNTILFINISHED:
                 if(System.currentTimeMillis() - startTime >= 750) {

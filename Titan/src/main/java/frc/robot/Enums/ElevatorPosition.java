@@ -3,7 +3,7 @@ package frc.robot.Enums;
 import frc.robot.Elevator;
 
 public enum ElevatorPosition {
-    FLOOR(0,47,0,47), LOW(0,16,0,84), MID(0,86,0,132), HIGH(0,160,0,183);
+    FLOOR(0,37,0,37), LOW(0,16,0,84), MID(0,86,0,132), HIGH(0,160,0,183);
 
     private final int targetHatchEnc;
     private final int targetHatchLidar;
