@@ -1,52 +1,41 @@
 package frc.robot;
 
 import edu.wpi.first.cameraserver.CameraServer;
-//import edu.wpi.first.networktables.NetworkTableEntry;
-//import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Limelight.CameraMode;
 
 public class Robot extends TimedRobot {
-
   SWDrive driveBase;
-  Elevator elevator;
-  //SimpleElevator sEle;
-  //IntakeTilt tilt;
-  Intake intake;
-  //PistonClimber pistonClimber; //NOTE: Piston Climber is not used in this file; used in SWDrive
-  //Climber climber;
-  //private static NetworkTableInstance table = null;
-
+  //SimpleElevator simpleElevator;
+  Superstructure superstructure;
   Compressor compressor;
-  XboxController sDriver;
 
   @Override 
   public void robotInit() {
+    //Initialize Subsystems
     driveBase = SWDrive.getInstance();
-    intake = Intake.getInstance();
-    elevator = Elevator.getInstance();
-    //tilt = IntakeTilt.getInstance();
-    //sEle = SimpleElevator.getInstance();
-    //pistonClimber = PistonClimber.getInstance();
-    //climber = Climber.getInstance();
+    superstructure = Superstructure.getInstance();
+    
+    //simpleElevator = SimpleElevator.getInstance();
 
-    sDriver = new XboxController(1);
 
     PistonClimber.getInstance().pullInPistons();
+    driveBase.zero();
 
-    
+    //Initialize Compressor
     compressor = new Compressor();
     compressor.start();
     compressor.setClosedLoopControl(true);
-    driveBase.zero();
+
+    //Initialize Cameras
     CameraServer.getInstance().startAutomaticCapture();
     Limelight.setCameraMode(CameraMode.eDriver);
   }
 
   @Override
   public void autonomousInit() {
+    superstructure.init();
   }
  
   @Override
@@ -63,35 +52,21 @@ public class Robot extends TimedRobot {
     commonPeriodic();
   }
 
+  /**
+   * Common Routine shared between Autonomous and Teleop
+   */
   public void commonPeriodic() {
-    
     driveBase.drive();
-    //sEle.drive(sDriver);
-    elevator.drive(sDriver);
-    intake.drive(sDriver);
-    //analyzeVisionData();
-    //tilt.drive(sDriver);
+    superstructure.drive();
   }
-
- /* public void analyzeVisionData() {
-    if (table == null) {
-			table = NetworkTableInstance.getDefault();
-		}
-    double[] tapeCentroids = new double[5];
-    tapeCentroids =  table.getTable("floorTapeData").getEntry("floorTapeCentroids").getDoubleArray(tapeCentroids);
-    for(double x : tapeCentroids) {
-      if(x != -1) {
-
-      }
-    }
-  }*/
 
   @Override
   public void testInit() {
+    superstructure.init();
   }
 
   @Override
   public void testPeriodic() {
-    //commonPeriodic();
+    commonPeriodic();
   }
 }

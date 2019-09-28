@@ -4,6 +4,6 @@ import frc.robot.Enums.AutoObjective;
 
 public class RotateCmd extends BaseCmd {
     public RotateCmd(double theta) {
-        super(AutoObjective.DRIVEROTATE, theta);
+        super(AutoObjective.DRIVE_ROTATE, theta);
     }
 }

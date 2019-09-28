@@ -1,10 +1,29 @@
 package frc.robot;
 
+/**
+ * Utility Class Methods
+ */
 class Utilities {
+    /**
+     * Returns 0.0 if value is less than the tolerance threshold value
+     * 
+     * @param value Value to check for being under tolerance
+     * 
+     * @param tolerance threshold value
+     * 
+     * @return value if above the tolerance threshold
+     */
     public static double deadband(double value, double tolerance) {
         return Math.abs(value) > tolerance ? value : 0.0;
     }
 
+    /**
+     * Normalizes a vector
+     * 
+     * @param values vector to normalize
+     * 
+     * @return normalized vector: [-1, 1]
+     */
     public static double[] normalize(double[] values) {
         double max_val = values[0];
         boolean normFlag = max_val > 1;
@@ -14,9 +33,9 @@ class Utilities {
                 normFlag = max_val > 1;
             }
         }
-        if(normFlag){
-        for(int x = 0; x < values.length; x++) 
-            values[x] /= max_val;
+        if(normFlag) {
+            for(int x = 0; x < values.length; x++) 
+                values[x] /= max_val;
         }
         return values;
     }
@@ -42,6 +61,13 @@ class Utilities {
         return -ret;
     }
 
+    /**
+     * Normalizes Angle
+     * 
+     * @param theta angle to normalize
+     * 
+     * @return normalized angle from [-180, 180]
+     */
     public static double normalizeAngle(double theta) {
         if(theta > 180) {
             theta -= 360;
@@ -50,5 +76,17 @@ class Utilities {
         }
 
         return theta;
+    }
+
+    /**
+     * Checks if value is within epsilon of targetValue
+     * 
+     * @param targetValue desired value
+     * @param value current value
+     * @param epsilon the range value can be within from targetValue
+     * @return true if value is within epsilon range of targetValue
+     */
+    public static boolean withinEpsilon(double targetValue, double value, double epsilon) {
+        return Math.abs(targetValue - value) < epsilon;
     }
 }

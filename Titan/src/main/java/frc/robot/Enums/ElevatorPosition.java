@@ -1,37 +1,36 @@
 package frc.robot.Enums;
 
-import frc.robot.Elevator;
+import frc.robot.Intake;
 
+/**
+ * Enum for Elevator Position
+ * 
+ * @author Shreyas Prasad
+ */
 public enum ElevatorPosition {
-    FLOOR(0,37,0,37), LOW(0,16,0,84), MID(0,86,0,132), HIGH(0,160,0,183);
+    FLOOR(37,37), LOW(16,84), MID(86,132), HIGH(160,183);
 
-    private final int targetHatchEnc;
     private final int targetHatchLidar;
-    private final int targetCargoEnc;
     private final int targetCargoLidar;
 
-    private ElevatorPosition(int hatchEnc, int hatchLidar, int cargoEnc, int cargoLidar) {
-        targetHatchEnc = hatchEnc;
-        targetHatchLidar = hatchLidar;
-        targetCargoEnc = cargoEnc;
-        targetCargoLidar = cargoLidar;
-        }
+    /**
+     * Constructor for ElevatorPosition Enum
+     * 
+     * @param hatchLidar Lidar value for Hatch Position
+     * 
+     * @param cargoLidar Lidar Value for Cargo Position
+     */
+    private ElevatorPosition(int targetHatchLidar, int targetCargoLidar) {
+        this.targetHatchLidar = targetHatchLidar;
+        this.targetCargoLidar = targetCargoLidar;
+    }
 
-    public int getTargetEncValue() {
-        return Elevator.getInstance().getIntakePosition() == IntakePosition.HATCH ? targetHatchEnc : targetCargoEnc;
-    }
+    /**
+     * Gets Target Lidar Position based on Intake Position
+     * 
+     * @return Target LIDAR position for corresponding Intake Position
+     */
     public int getTargetLidarValue() {
-        return Elevator.getInstance().getIntakePosition() == IntakePosition.HATCH ? targetHatchLidar : targetCargoLidar;
-    }
-    public AutoObjective getElevatorCmd(ElevatorPosition position) {
-        if(position == LOW)
-            return AutoObjective.ELEVATORLOW;
-        if(position == MID)
-            return AutoObjective.ELEVATORMID;
-        if(position == HIGH)
-            return AutoObjective.ELEVATORHIGH;;
-        if(position == FLOOR)
-            return AutoObjective.ELEVATORFLOOR;
-        return null;
+        return targetHatchLidar;//Intake.getInstance().getIntakePosition() == IntakePosition.HATCH ? targetHatchLidar : targetCargoLidar;
     }
 }

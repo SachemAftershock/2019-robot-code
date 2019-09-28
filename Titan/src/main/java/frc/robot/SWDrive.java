@@ -1,9 +1,5 @@
 package frc.robot;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
@@ -15,28 +11,32 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.I2C.Port;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Commands.CargoSearchCmd;
 import frc.robot.Commands.RotateCmd;
 
+/**
+ * Six Wheel Drive Subsystem class
+ * 
+ * @author Rohan Bapat
+ */
 class SWDrive extends Mechanism {
-
     private TalonSRX leftMaster, rightMaster;
     private VictorSPX leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
-    private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled, cargoSearch, piCamera;
+    private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled, cargoSearch;
     private AHRS navx;
     private double leftTarget, rightTarget, lacc, racc;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
 
-   // private DatagramSocket piComm;
-   // private InetAddress host;
-
+    /**
+     * Constructor for SWDrive Class
+     */
     private SWDrive() {
         super();
+        //Initialize all Master and Slave Motors for Closed Loop Control
         leftMaster = new TalonSRX(Constants.LEFT_MASTER_PORT);
         leftMaster.setNeutralMode(NeutralMode.Brake);
         leftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 0);
@@ -72,7 +72,6 @@ class SWDrive extends Mechanism {
 
         rightSlave = new VictorSPX(Constants.RIGHT_SLAVE_PORT);
         rightSlave.setNeutralMode(NeutralMode.Brake);
-        //rightSlave.setInverted(true);
         rightSlave.follow(rightMaster);
 
         gearSolenoid = new DoubleSolenoid(Constants.DRIVE_SOLENOID_FORWARD, Constants.DRIVE_SOLENOID_REVERSE);
@@ -80,13 +79,6 @@ class SWDrive extends Mechanism {
         navx = new AHRS(Port.kMXP);
         controller = new XboxController(Constants.PRIMARY_DRIVER_PORT);
         pid = new PIDController();
-
-        try {
-            //piComm = new DatagramSocket();
-            //host =  InetAddress.getByName("10.2.63.25");
-        } catch(Exception e) {
-            System.out.println("Exception caught when initializing socket: " + e.getMessage());
-        }
         
         //tXBuffer = new CircularBuffer(10);
 
@@ -95,22 +87,23 @@ class SWDrive extends Mechanism {
         rotateSet = false;
         antiTiltEnabled = true;
         cargoSearch = false;
-        piCamera = false;
         leftTarget = 0;
         rightTarget = 0;
         lacc = 0;
         racc = 0;
     }
 
-    public static SWDrive getInstance() {
-        return driveInstance;
-    }
-
+    /**
+     * Base Mechanism Method
+     * Drives Drivebase and Drivebase Command Queue
+     */
     public void drive() {
         if(controller.getBackButtonReleased()) {
             setpointReached = true;
             super.flush();
         } 
+        
+        //Climber Controls
         if(controller.getStickButtonReleased(Hand.kLeft)) {
             PistonClimber.getInstance().toggleRearPiston();
         }
@@ -125,13 +118,13 @@ class SWDrive extends Mechanism {
             }
 
             switch(target.getObjective()) {
-                case DRIVELINEAR:
+                case DRIVE_LINEAR:
                     autoDrive(target.getSetpoint());
                     break;
-                case DRIVEROTATE:
+                case DRIVE_ROTATE:
                     autoRotate(target.getSetpoint());
                     break;
-                case CARGOSEARCH:
+                case CARGO_SEARCH:
                     rotateCargo(target.getSetpoint());
                 default:
                     break;
@@ -144,25 +137,7 @@ class SWDrive extends Mechanism {
        
         if(controller.getPOV() >= 0 && !rotateSet) {
             //TODO: bug below, make it get angle right before it sets motors
-            if(controller.getPOV() == 0) {/*
-                try {
-                    piCamera = !piCamera;
-                    byte[] msg = "0".getBytes();
-                    
-                    if(piCamera) {
-                        msg = "1".getBytes();
-                    } 
-                    DatagramPacket packet = new DatagramPacket(msg, msg.length, host, 5807);
-                    piComm.send(packet);
-                } catch(Exception e) {
-                    System.out.println("Exception caught when sending packet to pi: " + e.getMessage());
-                }
-                */
-               
-            } else {
-                super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
-            }
-            
+            super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
         }
 
         if(controller.getBumper(Hand.kLeft) && !cargoSearch) {
@@ -190,6 +165,11 @@ class SWDrive extends Mechanism {
         //tXBuffer.push(Limelight.getTx());
     }
 
+    /**
+     * Uses Positional Control on TalonSRX to drive to a target position
+     * 
+     * @param setpoint target position to drive to
+     */
     public void autoDrive(double setpoint) {
         if(setpointReached) {
             leftTarget = leftMaster.getSelectedSensorPosition() + setpoint;
@@ -210,7 +190,7 @@ class SWDrive extends Mechanism {
         }
 
         if(Limelight.isTarget()) {
-                                            //use tXBuffer.getSmoothedValue() for smoothed??
+            //use tXBuffer.getSmoothedValue() for smoothed??
             double normAngle = Utilities.normalizeAngle(Limelight.getTx());
             double output = pid.updateRotation(navx.getYaw(), normAngle);
 
@@ -223,6 +203,11 @@ class SWDrive extends Mechanism {
         setpointReached = Limelight.isTarget() && Math.abs(Limelight.getTx()) < Constants.CARGO_SEARCH_EPSILON;
     }
 
+    /**
+     * Uses PID to rotate to given angle
+     * 
+     * @param theta Angle to rotate to
+     */
     public void autoRotate(double theta) {
         if(setpointReached) {
             setpointReached = false;
@@ -235,18 +220,19 @@ class SWDrive extends Mechanism {
         setpointReached = Math.abs(pid.getError()) < Constants.ROTATE_EPSILON;
     }
 
+    /**
+     * Zero Yaw and Drivetrain Encoders
+     */
     public void zero() {
         navx.zeroYaw();
         leftMaster.setSelectedSensorPosition(0, 0, 0);
         rightMaster.setSelectedSensorPosition(0, 0, 0);
     }
 
-    public float getPitch() {
-        return navx.getPitch();
-    }
-
+    /**
+     * Tank Drive Processor Method
+     */
     private void tankDrive() {
-        
         double leftY = Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
         double rightY = Utilities.deadband(controller.getY(Hand.kRight), 0.2);
         double leftTrigger = Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.1);
@@ -259,9 +245,12 @@ class SWDrive extends Mechanism {
         driveMotors(Utilities.normalize(speeds));
     }
 
+    /**
+     * Standard Arcade Drive Processor Method
+     */
     private void arcadeDrive() {
-        double leftY = -Utilities.deadband(controller.getY(Hand.kLeft), 0.2);
-        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.2);
+        double leftY = -Utilities.deadband(controller.getY(Hand.kLeft), 0.2) * 0.75;
+        double rightX = Utilities.deadband(controller.getX(Hand.kRight), 0.2) * 0.35;
 
         double leftSpeed = leftY + Constants.TURNING_CONSTANT * rightX;
         double rightSpeed = leftY - Constants.TURNING_CONSTANT * rightX;   
@@ -270,10 +259,22 @@ class SWDrive extends Mechanism {
         driveMotors(Utilities.normalize(speeds));
     }
 
+    /**
+     * Wrapper method to pass array of speeds
+     * 
+     * @param speeds Array of speeds to pass to driveMotors method
+     */
     private void driveMotors(double[] speeds) {
         driveMotors(speeds[0], speeds[1]);
     }
 
+    /**
+     * Drives motors after Deceleration and Anti-Tilt Calculations
+     * 
+     * @param leftSpeed Speed for Left Motors
+     * 
+     * @param rightSpeed Speed for Right Motors
+     */
     private void driveMotors(double leftSpeed, double rightSpeed) {
         float pitch = navx.getPitch();
       
@@ -297,70 +298,22 @@ class SWDrive extends Mechanism {
         leftMaster.set(ControlMode.PercentOutput, leftSpeed);
         rightMaster.set(ControlMode.PercentOutput, rightSpeed);
     } 
-    
-    private double getEncoderDiff() {
-        return Math.abs(leftMaster.getSelectedSensorPosition(0) - rightMaster.getSelectedSensorPosition(0));
-    }
 
+    /**
+     * Rumbles Controller for length seconds
+     * 
+     * @param length Length of Rumble
+     */
     public void rumbleController(double length) {
         (new JoystickRumble(controller, 1, length)).start();
     }
 
-    public boolean onDemandTest() { //TODO: Fix this
-        double prevLeftEncoderCount = leftMaster.getSelectedSensorPosition(0);
-        double prevRightEncoderCount = rightMaster.getSelectedSensorPosition(0);
-        boolean leftHealthy = true, rightHealthy = true;
-        driveMotors(0.1, 0.1);
-        Timer.delay(3);
-        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) < 10) {
-            System.out.println("LEFT MASTER ENCODER ERROR: \n  NOT UPDATING FORWARD");
-            System.out.println("    DIFF:" + Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)));
-            leftHealthy = false;
-        } 
-        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) < 10) {
-            System.out.println("RIGHT MASTER ENCODER ERROR: \n  NOT UPDATING FORWARD");
-            System.out.println("    DIFF:" + Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)));
-            rightHealthy = false;
-        }
-        if(getEncoderDiff() > 0.1 * Math.max(Math.abs(leftMaster.getSelectedSensorPosition(0)), Math.abs(rightMaster.getSelectedSensorPosition(0)))) {
-            System.out.println("DRIVEBASE SIDE DIFFERENCE: \n  DIFFERENCE BETWEEN SIDES FORWARD");
-            System.out.println("   DIFF:" + getEncoderDiff());
-            rightHealthy = false;
-            leftHealthy = false;
-        }
-        driveMotors(-0.1, -0.1);
-        Timer.delay(3);
-        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) < 10) {
-            System.out.println("LEFT MASTER ENCODER ERROR: \n  NOT UPDATING REVERSE");
-            System.out.println("    DIFF:" + getEncoderDiff());
-            leftHealthy = false;
-        } 
-        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) < 10) {
-            System.out.println("RIGHT MASTER ENCODER ERROR: \n  NOT UPDATING REVERSE");
-            System.out.println("    DIFF:" + getEncoderDiff());
-            rightHealthy = false;
-        }
-        if(getEncoderDiff() > 0.1 * Math.max(Math.abs(leftMaster.getSelectedSensorPosition(0)), Math.abs(rightMaster.getSelectedSensorPosition(0)))) {
-            System.out.println("DRIVEBASE SIDE DIFFERENCE: \n  DIFFERENCE BETWEEN SIDES REVERSE");
-            System.out.println("   DIFF:" + getEncoderDiff());
-            rightHealthy = false;
-            leftHealthy = false;
-        }
-        driveMotors(0, 0);
-        Timer.delay(3);
-        prevLeftEncoderCount = leftMaster.getSelectedSensorPosition(0);
-        prevRightEncoderCount = rightMaster.getSelectedSensorPosition(0);
-        if(Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)) != 0) {
-            System.out.println("LEFT MASTER ENCODER ERROR: \n  UPDATING WHEN OFF");
-            System.out.println("    DIFF:" + Math.abs(prevLeftEncoderCount - leftMaster.getSelectedSensorPosition(0)));
-            leftHealthy = false;
-        } 
-        if(Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)) != 0) {
-            System.out.println("Right MASTER ENCODER ERROR: \n  UPDATING WHEN OFF");
-            System.out.println("    DIFF:" + Math.abs(prevRightEncoderCount - rightMaster.getSelectedSensorPosition(0)));
-            rightHealthy = false;
-        }
-        
-        return leftHealthy && rightHealthy;
+    /**
+     * Gets instance of SWDrive singleton
+     * 
+     * @return Instance of SWDrive
+     */
+    public static SWDrive getInstance() {
+        return driveInstance;
     }
 }
