@@ -23,12 +23,11 @@ public class Elevator extends Mechanism {
     private IntakePosition intakeMode;
     private ElevatorPosition currentElevatorPosition;//, targetPosition;
     private TalonSRX elevatorTalon;
-    private DigitalInput topLS, bottomLS; //TODO: Find out how the Phoenix Lib integrates the LS
     private GenericHID buttonBox;
     private LIDAR lidar;
     private int[] buttonID;
     private frc.robot.PIDController cargoPID, hatchPID;
-    private boolean completeManualOverride, hatchModeEnabled , topLSPressed, bottomLSPressed, setpointReached, firstRun, lidarHealthy;
+    private boolean hatchModeEnabled, setpointReached, firstRun, lidarHealthy, completeManualOverride;
     private int idOfLastButtonPressed;
     private boolean hatchModePrev = false;
 
@@ -46,8 +45,6 @@ public class Elevator extends Mechanism {
         buttonBox = new Joystick(Constants.BUTTON_BOX_PORT);
         lidar = new LIDAR(new DigitalInput(Constants.ELEVATOR_LIDAR_PORT));
         elevatorTalon = new TalonSRX(Constants.ELEVATOR_TALON_PORT);
-        topLS = new DigitalInput(Constants.TOP_LS_PORT);
-        bottomLS = new DigitalInput(Constants.BOTTOM_LS_PORT);
         elevatorTalon.configSelectedFeedbackSensor(FeedbackDevice.QuadEncoder, 0, 0);
         elevatorTalon.setNeutralMode(NeutralMode.Brake);
         elevatorTalon.setInverted(false);
@@ -72,10 +69,8 @@ public class Elevator extends Mechanism {
         cargoPID = new frc.robot.PIDController();
         hatchPID = new frc.robot.PIDController();
 
-        idOfLastButtonPressed = -1;
         completeManualOverride = false;
-        topLSPressed = false;
-        bottomLSPressed = false;
+        idOfLastButtonPressed = -1;
         lidarHealthy = true;
         firstRun = true;
         setpointReached = true;
@@ -109,10 +104,9 @@ public class Elevator extends Mechanism {
             super.flush();
             firstRun = false;
         }
-
         if(controller.getBackButtonPressed()) {
-            //completeManualOverride = !completeManualOverride;
-            (new JoystickRumble(controller, 1, 2.0)).start();
+            completeManualOverride = !completeManualOverride;
+            (new JoystickRumble(controller, 1, 1.5)).start();
         } 
         if(controller.getStartButtonReleased()) {
             super.flush();
@@ -120,43 +114,19 @@ public class Elevator extends Mechanism {
         } 
 
         if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, -(Utilities.deadband(controller.getY(Hand.kLeft), 0.2) * 0.65));
-        } else if(Utilities.deadband(controller.getTriggerAxis(Hand.kRight), 0.5) != 0) {
-            elevatorTalon.set(ControlMode.PercentOutput, 0.3); //TODO: Tweak this value to nudge it up maybe?
-        } else if(setpointReached && (Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) == 0)) {
-            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
+            if(Utilities.deadband(controller.getY(Hand.kLeft), 0.2) != 0)
+                elevatorTalon.set(ControlMode.PercentOutput, -(Utilities.deadband(controller.getY(Hand.kLeft), 0.2) * 0.5));
+            else if (!isLidarValueInRange(ElevatorPosition.LOW))
+                elevatorTalon.set(ControlMode.PercentOutput, 0.1);
+            else
+                elevatorTalon.set(ControlMode.PercentOutput, 0.0);
         }
         
-        /*if(controller.getBumper(Hand.kRight) && currentElevatorPosition != ElevatorPosition.HIGH) {
-            //targetPosition = ElevatorPosition.values()[currentElevatorPosition.ordinal() + 1];
-            super.push(new ElevatorCmd(ElevatorPosition.values()[currentElevatorPosition.ordinal() + 1], -1));
-        } else if(controller.getBumper(Hand.kLeft) && currentElevatorPosition != ElevatorPosition.FLOOR) {
-            //targetPosition = ElevatorPosition.values()[currentElevatorPosition.ordinal() - 1];
-            super.push(new ElevatorCmd(ElevatorPosition.values()[currentElevatorPosition.ordinal() - 1], -1));
-        }  
-        System.out.println("-------TARGET BUMPER:" + targetPosition);*/
-
         if(Utilities.deadband(controller.getTriggerAxis(Hand.kLeft), 0.5) == 0) {
             drive();
         }
-        //checkLIDARHealth();
-        //updateElevatorPosition();
     }  
     public void drive() {
-        /*if(!topLS.get() && !topLSPressed) { //TODO: Reimplement & Test LS Logic
-            currentElevatorPosition = ElevatorPosition.HIGH;
-            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
-            topLSPressed = true;
-        } else if (topLS.get() && topLSPressed) {
-            topLSPressed = false;
-        }
-        if(!bottomLS.get() && !bottomLSPressed) {
-            currentElevatorPosition = ElevatorPosition.FLOOR;
-            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
-            topLSPressed = true;
-        } else if (bottomLS.get() && bottomLSPressed) {
-            topLSPressed = false;
-        }*/
 
         for(int id : buttonID) {
             if(buttonBox.getRawButton(id)) {
@@ -164,6 +134,8 @@ public class Elevator extends Mechanism {
                     super.flush(); //Only the button box adds to the elevator queue, this allows the driver to overwrite his last input
                     updateElevatorQueue(id);
                     idOfLastButtonPressed = id;
+                } else if (!isLidarValueInRange(elevatorMap.get(id).getElevatorPosition()) && !completeManualOverride && elevatorMap.get(id).getElevatorPosition() != ElevatorPosition.LOW) {
+                    updateElevatorQueue(id);
                 }
             }
         }  
@@ -237,9 +209,15 @@ public class Elevator extends Mechanism {
             elevatorTalon.set(ControlMode.PercentOutput, output);
         }
         if(setpointReached) {
-            elevatorTalon.set(ControlMode.PercentOutput, 0.0);
+            if(targetPosition != ElevatorPosition.LOW)
+                elevatorTalon.set(ControlMode.PercentOutput, 0.1);
+            else
+                elevatorTalon.set(ControlMode.PercentOutput, 0.0);
             return;
         }
+    }
+    public static void main() {
+        
     }
 
     private void updateElevatorPosition() {
@@ -281,6 +259,9 @@ public class Elevator extends Mechanism {
         } else {
             lidarHealthy = true;
         }
+    }
+    public boolean getIsFloorPosition() {
+        return isLidarValueInRange(ElevatorPosition.FLOOR);
     }
 
     public IntakePosition getIntakePosition() {

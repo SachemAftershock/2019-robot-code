@@ -1,5 +1,6 @@
 package frc.robot;
 
+import edu.wpi.first.cameraserver.CameraServer;
 //import edu.wpi.first.networktables.NetworkTableEntry;
 //import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Compressor;
@@ -33,16 +34,19 @@ public class Robot extends TimedRobot {
 
     sDriver = new XboxController(1);
 
+    PistonClimber.getInstance().pullInPistons();
+
     
     compressor = new Compressor();
     compressor.start();
     compressor.setClosedLoopControl(true);
+    driveBase.zero();
+    CameraServer.getInstance().startAutomaticCapture();
+    Limelight.setCameraMode(CameraMode.eDriver);
   }
 
   @Override
   public void autonomousInit() {
-    //Limelight.setCameraMode(CameraMode.eVision);
-    driveBase.zero();
   }
  
   @Override
@@ -52,8 +56,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    driveBase.zero();
-    Limelight.setCameraMode(CameraMode.eDriver);
   }
 
   @Override

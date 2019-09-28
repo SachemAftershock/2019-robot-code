@@ -1,5 +1,9 @@
 package frc.robot;
 
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
@@ -22,11 +26,14 @@ class SWDrive extends Mechanism {
     private VictorSPX leftSlave, rightSlave;
     private DoubleSolenoid gearSolenoid;
     private XboxController controller;
-    private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled, cargoSearch;
+    private boolean tankEnabled, setpointReached, rotateSet, antiTiltEnabled, cargoSearch, piCamera;
     private AHRS navx;
     private double leftTarget, rightTarget, lacc, racc;
     private static SWDrive driveInstance = new SWDrive();
     private PIDController pid;
+
+   // private DatagramSocket piComm;
+   // private InetAddress host;
 
     private SWDrive() {
         super();
@@ -73,6 +80,14 @@ class SWDrive extends Mechanism {
         navx = new AHRS(Port.kMXP);
         controller = new XboxController(Constants.PRIMARY_DRIVER_PORT);
         pid = new PIDController();
+
+        try {
+            //piComm = new DatagramSocket();
+            //host =  InetAddress.getByName("10.2.63.25");
+        } catch(Exception e) {
+            System.out.println("Exception caught when initializing socket: " + e.getMessage());
+        }
+        
         //tXBuffer = new CircularBuffer(10);
 
         tankEnabled = false;
@@ -80,6 +95,7 @@ class SWDrive extends Mechanism {
         rotateSet = false;
         antiTiltEnabled = true;
         cargoSearch = false;
+        piCamera = false;
         leftTarget = 0;
         rightTarget = 0;
         lacc = 0;
@@ -96,10 +112,10 @@ class SWDrive extends Mechanism {
             super.flush();
         } 
         if(controller.getStickButtonReleased(Hand.kLeft)) {
-            PistonClimber.getInstance().toggleFrontPistons();
+            PistonClimber.getInstance().toggleRearPiston();
         }
         if(controller.getStickButtonReleased(Hand.kRight)) {
-            PistonClimber.getInstance().toggleRearPiston();
+            PistonClimber.getInstance().toggleFrontPistons();
         }
 
 
@@ -128,7 +144,25 @@ class SWDrive extends Mechanism {
        
         if(controller.getPOV() >= 0 && !rotateSet) {
             //TODO: bug below, make it get angle right before it sets motors
-            super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
+            if(controller.getPOV() == 0) {/*
+                try {
+                    piCamera = !piCamera;
+                    byte[] msg = "0".getBytes();
+                    
+                    if(piCamera) {
+                        msg = "1".getBytes();
+                    } 
+                    DatagramPacket packet = new DatagramPacket(msg, msg.length, host, 5807);
+                    piComm.send(packet);
+                } catch(Exception e) {
+                    System.out.println("Exception caught when sending packet to pi: " + e.getMessage());
+                }
+                */
+               
+            } else {
+                super.push(new RotateCmd(controller.getPOV() + navx.getYaw()));
+            }
+            
         }
 
         if(controller.getBumper(Hand.kLeft) && !cargoSearch) {
